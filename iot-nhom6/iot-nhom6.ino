@@ -1,20 +1,23 @@
 /*
  * =============================================================================
- *  PROJECT IoT Nhom 6 - ESP8266
+ *  PROJECT IoT Nhóm 6 - ESP8266
  * =============================================================================
- *  Mo ta: Node IoT doc cam bien nhiet do / do am (DHT11), dieu khien LED,
- *         hien thi OLED, ket noi MQTT, dong bo thoi gian NTP, tu dong bat/tat
- *         den theo gio (18h-6h).
+ *  Mô tả  : Node IoT đọc cảm biến nhiệt độ / độ ẩm (DHT11), điều khiển LED,
+ *           hiển thị OLED, kết nối MQTT, đồng bộ NTP, tự động bật/tắt đèn
+ *           theo giờ (18h-6h).
  *
- *  Cac tinh nang chinh:
- *    - Doc nhiet do & do am moi 2 giay
- *    - Hien thi gia tri len man hinh OLED SH1106
- *    - Gui du lieu cam bien len Node-RED qua MQTT
- *    - Nhan lenh bat/tat LED tu Node-RED (slider, JSON, text)
- *    - Tu dong bat den luc toi (18h) va tat den luc sang (6h)
- *    - Canh bao khi nhiet do / do am vuot nguong
+ *  Phân cụm:
+ *    - Đọc DHT11 mỗi 20 giây
+ *    - Hiển thị giá trị lên màn hình OLED SH1106 128x64
+ *    - Gửi dữ liệu cảm biến lên Node-RED qua MQTT (TLS/HiveMQ Cloud)
+ *    - Nhận lệnh LED từ Node-RED (slider, JSON, text)
+ *    - Tự động bật đèn lúc tối (18h), tắt đèn lúc sáng (6h)
+ *    - Cảnh báo khi nhiệt độ / độ ẩm vượt ngưỡng
  *
- *  Phan cung: ESP8266 (Wemos D1 Mini), DHT11, OLED SH1106 128x64 I2C
+ *  Phần cứng: ESP8266 (Wemos D1 Mini), DHT11, OLED SH1106 128x64 I2C
+ *
+ *  Phiên bản: 1.0
+ *  Ngày     : 03/2026
  * =============================================================================
  */
 
@@ -28,418 +31,492 @@
 
 
 // =============================================================================
-// 1. DINH NGHIA CHAN GPIO
+// 1. ĐỊNH NGHĨA CHÂN GPIO
 // =============================================================================
-#define DHT_PIN     0       // Cam bien DHT11 - Chan Data (GPIO 0)
-#define OLED_SCL    4       // OLED - Chan SCL (GPIO 4)
-#define OLED_SDA    5       // OLED - Chan SDA (GPIO 5)
-#define LED_PIN    12       // Den LED - Chan PWM (GPIO 12)
-#define DHTTYPE    DHT11    // Loai cam bien DHT (DHT11 / DHT22)
-
-
-// =============================================================================
-// 2. CAU HINH WIFI
-// =============================================================================
-const char *WIFI_SSID   = "Anh đủ";
-const char *WIFI_PASS   = "123123123";
+#define DHT_PIN     0    // Cảm biến DHT11 - Chân Data (GPIO 0 / D3)
+#define OLED_SCL    4    // OLED SH1106    - Chân SCL (GPIO 4 / D2)
+#define OLED_SDA    5    // OLED SH1106    - Chân SDA (GPIO 5 / D1)
+#define LED_PIN    12    // Đèn LED        - Chân PWM (GPIO 12 / D6)
+#define DHTTYPE    DHT11 // Loại cảm biến DHT (DHT11 / DHT22)
 
 
 // =============================================================================
-// 3. CAU HINH MQTT
+// 2. CẤU HÌNH WIFI
 // =============================================================================
-// Server HiveMQ Cloud (TLS, port 8883)
-const char *MQTT_SERVER  = "b1c8f2cc5cd4416fb74b671a407dc0ff.s1.eu.hivemq.cloud";
-const int   MQTT_PORT    = 8883;
-const char *MQTT_USER    = "hivemq.webclient.1774528740272";
-const char *MQTT_PASS    = "&SG7@O0px!A3Iju6w%aD";
-
-// Cac topic MQTT
-//   - iot/env/data    : ESP gui du lieu cam bien len Node-RED (nhiet do, do am, canh bao)
-//   - iot/led/power/set: Node-RED gui lenh dieu khien LED den ESP
-//   - iot/led/status  : ESP gui lai trang thai LED hien tai ve Node-RED
-const char *TOPIC_ENV     = "iot/env/data";      // Gui du lieu cam bien
-const char *TOPIC_LED_CMD = "iot/led/power/set";  // Nhan lenh LED
-const char *TOPIC_LED_STS = "iot/led/status";     // Gui trang thai LED
+const char *ssid     = "Anh đủ";     // Tên mạng WiFi
+const char *password = "123123123";    // Mật khẩu WiFi
 
 
 // =============================================================================
-// 4. KHOI TAO CAC DOI TUONG
+// 3. CẤU HÌNH MQTT (HiveMQ Cloud - TLS)
 // =============================================================================
-WiFiClientSecure espClient;   // Ket noi TLS den HiveMQ
-PubSubClient     mqttClient;  // Thu vien MQTT
-DHT              dht(DHT_PIN, DHTTYPE);
+const char *mqtt_server = "b1c8f2cc5cd4416fb74b671a407dc0ff.s1.eu.hivemq.cloud";
+const int   mqtt_port   = 8883;      // Port TLS (có mật khẩu)
+const char *mqtt_user   = "hivemq.webclient.1774528740272";
+const char *mqtt_pass   = "&SG7@O0px!A3Iju6w%aD";
 
-// OLED SH1106 128x64 - Giao thuc I2C (SCL=GPIO4, SDA=GPIO5)
-U8G2_SH1106_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
+/*
+ * Tóm tắt các topic MQTT:
+ *
+ *  iot/env/data      - ESP gửi dữ liệu cảm biến lên Node-RED (nhiệt độ, độ ẩm,
+ *                      cảnh báo). Node-RED chỉ nhận, không gửi về topic này.
+ *
+ *  iot/led/power/set - Node-RED gửi lệnh điều khiển đèn cho ESP.
+ *                      ESP nhận và xử lý lệnh, không gửi trả lời về topic này.
+ *
+ *  iot/led/status    - ESP gửi trạng thái LED (bật/tắt, độ sáng) về Node-RED
+ *                      sau khi nhận lệnh hoặc khi trạng thái thay đổi.
+ *                      Dùng để Node-RED đồng bộ giao diện dashboard.
+ */
+const char *mqtt_env     = "iot/env/data";      // Gửi: dữ liệu cảm biến
+const char *mqtt_led     = "iot/led/power/set"; // Nhận: lệnh LED từ Node-RED
+const char *mqtt_led_sts = "iot/led/status";    // Gửi: trạng thái LED
 
 
 // =============================================================================
-// 5. BIEN TRANG THAI
+// 4. KHỞI TẠO CÁC ĐỐI TƯỢNG (biến toàn cục)
 // =============================================================================
-bool ledState       = false;  // Trang thai LED (bat/tat)
-int  brightness     = 0;      // Do sang LED (0-100%)
-float temperature   = 0.0;   // Nhiet do hien tai (C)
-float humidity      = 0.0;    // Do am hien tai (%)
+WiFiClientSecure espClient;                     // Kết nối TLS đến HiveMQ Cloud
+PubSubClient mqtt(espClient);                  // Client MQTT (TLS)
+DHT dht(DHT_PIN, DHTTYPE);                     // Cảm biến nhiệt độ / độ ẩm
 
-// Luu trang thai LED da gui len MQTT lan cuoi
-// Dung de tranh gui trung lap cung mot gia tri
+/*
+ * OLED SH1106 128x64 - Giao thức I2C
+ * Mặc định I2C ESP8266: SCL=GPIO4 (D2), SDA=GPIO5 (D1)
+ * U8G2_R0        : không xoay màn hình
+ * U8X8_PIN_NONE  : không dùng chân reset của OLED
+ */
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+
+
+// =============================================================================
+// 5. BIẾN TRẠNG THÁI CẢM BIẾN
+// =============================================================================
+bool ledState   = false;   // Trạng thái đèn: false = tắt, true = bật
+int  brightness = 0;       // Độ sáng LED: 0-100 (quy đổi 0-255 cho PWM)
+float temperature = 0.0f;   // Nhiệt độ hiện tại (°C), lấy từ DHT11
+float humidity    = 0.0f;   // Độ ẩm hiện tại (%), lấy từ DHT11
+
+
+// =============================================================================
+// 6. BIẾN TRẠNG THÁI GỬI MQTT
+// =============================================================================
+/*
+ * lastLedStateSent / lastBrightnessPublished
+ *   - Lưu trạng thái LED đã gửi lên topic iot/led/status lần cuối.
+ *   - Dùng để tránh gửi trùng lặp cùng một giá trị.
+ *   - Mỗi khi ledState hoặc brightness thay đổi, hàm publishLedStatusIfNeeded()
+ *     sẽ gửi giá trị mới lên MQTT.
+ */
 bool lastLedStateSent       = false;
-int  lastBrightnessSent     = -1;
-
-// Luu do sang truoc khi tu dong tat
-// De luc bat lai, den se khoi phuc dung do sang cu
-int  savedBrightness        = 100;
-
-// Thoi diem nguoi dung thao tac tay cuoi cung
-// Neu chua thao tac tay trong 60 phut -> cho phep che do tu dong
-unsigned long lastManualTime     = 0;
-const unsigned long MANUAL_TIMEOUT = 60UL * 60UL * 1000UL;  // 60 phut
+int  lastBrightnessPublished = -1;
 
 
 // =============================================================================
-// 6. HANG SO & NGUONG CANH BAO
+// 7. BIẾN TRẠNG THÁI TỰ ĐỘNG THEO GIỜ
 // =============================================================================
-const float THRESHOLD_TEMP_HIGH = 38.0;  // Nguong nhiet do cao
-const float THRESHOLD_TEMP_LOW  = 18.0;  // Nguong nhiet do thap
-const float THRESHOLD_HUMI_HIGH = 80.0;  // Nguong do am cao
-const float THRESHOLD_HUMI_LOW  = 30.0;  // Nguong do am thap
-
-// Khoang thoi gian doc cam bien (ms)
-const unsigned long DHT_INTERVAL = 20000UL;  // Doc moi 20 giay
-
-// Thoi diem doc cam bien cuoi cung
-unsigned long lastDHTTime      = 0;
-unsigned long lastMQTTReconnect = 0;
-
-
-// =============================================================================
-// 7. CAU HINH THOI GIAN (NTP)
-// =============================================================================
-// Server NTP de dong bo dong ho
-const char *NTP_SERVER = "pool.ntp.org";
-
-// Muc gio Viet Nam (ICT = UTC+7), khong co daylight saving
-const char *TZ_INFO    = "ICT-7";
-
-
-// =============================================================================
-// ===========================  HAM THIET BI  ==================================
-// =============================================================================
-
 /*
- * Ham: khoiTaoGPIO
- * Mo ta : Cai dat che do cho cac chan GPIO
+ * lastBrightness
+ *   - Lưu độ sáng hiện tại (0-100) trước khi chế độ tự động tắt đèn.
+ *   - Khi đèn bật trở lại, sẽ khôi phục đúng độ sáng này.
+ *   - Giá trị mặc định = 100 (nếu chưa từng bật đèn).
  */
-void khoiTaoGPIO()
-{
-    pinMode(LED_PIN, OUTPUT);
-    analogWrite(LED_PIN, 0);  // LED ban dau tat
-}
+int lastBrightness = 100;
 
 /*
- * Ham: khoiTaoOLED
- * Mo ta : Khoi tao man hinh OLED, hien thi thong bao khoi dong
+ * lastManualTime
+ *   - Thời điểm (ms) người dùng thao tác tay cuối cùng trên đèn.
+ *   - Dùng để xác định người dùng có đang ở "chế độ tay" hay "chế độ tự động".
+ *   - MANUAL_WINDOW = 60 phút: nếu 60 phút không có thao tác tay,
+ *     chương trình sẽ chuyển sang chế độ tự động (bật/tắt đèn theo giờ).
  */
-void khoiTaoOLED()
-{
-    oled.begin();
-    oled.clearBuffer();
-    oled.setFont(u8g2_font_8x13_tf);
-    oled.drawStr(0, 20, "Dang khoi tao...");
-    oled.drawStr(0, 36, "WiFi + Asia/HN...");
-    oled.sendBuffer();
-}
+unsigned long lastManualTime   = 0;
+const unsigned long MANUAL_WINDOW = 60UL * 60UL * 1000UL;  // 60 phút = 3.600.000 ms
 
 
 // =============================================================================
-// ===========================  WIFI  ===========================================
+// 8. TIMER & CHU KỲ XỬ LÝ
 // =============================================================================
+unsigned long lastDHT = 0;      // Thời điểm đọc DHT11 lần cuối (ms)
+unsigned long lastMQTT = 0;     // Thời điểm thử kết nối MQTT lần cuối (ms)
+unsigned long lastNTPSync = 0;  // Thời điểm đồng bộ NTP lần cuối (ms)
 
 /*
- * Ham: ketNoiWiFi
- * Mo ta : Ket noi den mang WiFi, doi cho den khi thanh cong
+ * INTERVAL_DHT
+ *   - Chu kỳ đọc cảm biến DHT11 = 20 giây.
+ *   - DHT11 có tần số đọc tối thiểu khoảng 1-2 giây, nhưng để 20 giây
+ *     giúp giảm lượng MQTT, tiết kiệm pin và tránh ù ẩm.
  */
-void ketNoiWiFi()
-{
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    Serial.print("Dang ket noi WiFi");
-
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println();
-    Serial.println("WiFi connected! IP: " + WiFi.localIP().toString());
-}
-
-
-// =============================================================================
-// ===========================  THOI GIAN (NTP)  ================================
-// =============================================================================
+const unsigned long INTERVAL_DHT = 20000UL;  // 20.000 ms = 20 giây
 
 /*
- * Ham: dongBoThoiGian
- * Mo ta : Dong bo dong ho ESP8266 voi server NTP (gio Viet Nam UTC+7)
+ * INTERVAL_NTP
+ *   - Chu kỳ đồng bộ lại NTP = 1 giờ.
+ *   - ESP8266 không có RTC (đồng hồ thực) nên sau khi mất nguồn, thời gian
+ *     sẽ bị reset. Đồng bộ lại định kỳ giúp duy trì giờ chính xác.
  */
-void dongBoThoiGian()
-{
-    setenv("TZ", TZ_INFO, 1);
-    tzset();
-    configTime(0, 0, NTP_SERVER);
-
-    Serial.println("Dang lay gio tu NTP...");
-    time_t now = time(nullptr);
-    int count = 0;
-
-    // Cho toi 10 lan (5 giay) de nhan duoc gio
-    while (now < 8 * 3600 * 2 && count < 10) {
-        delay(500);
-        Serial.print(".");
-        now = time(nullptr);
-        count++;
-    }
-    Serial.println();
-
-    if (now > 8 * 3600 * 2) {
-        struct tm *t = localtime(&now);
-        Serial.printf("[TIME] Gio HN: %02d:%02d:%02d | Ngay: %02d/%02d/%04d\n",
-                      t->tm_hour, t->tm_min, t->tm_sec,
-                      t->tm_mday, t->tm_mon + 1, t->tm_year + 1900);
-        Serial.println("Dong ho dong bo thanh cong!");
-    } else {
-        Serial.println("Dong ho chua dong bo duoc.");
-    }
-}
+const unsigned long INTERVAL_NTP = 3600000UL;  // 1 giờ = 3.600.000 ms
 
 
 // =============================================================================
-// ===========================  MQTT  ===========================================
+// 9. NGƯỠNG CẢNH BÁO
 // =============================================================================
+const float TEMP_MAX = 38.0f;   // Ngưỡng nhiệt độ CAO: > 38°C
+const float TEMP_MIN = 18.0f;   // Ngưỡng nhiệt độ THẤP: < 18°C
+const float HUMI_MAX = 80.0f;   // Ngưỡng độ ẩm CAO: > 80%
+const float HUMI_MIN = 30.0f;   // Ngưỡng độ ẩm THẤP: < 30%
 
+
+// =============================================================================
+// 10. CẤU HÌNH NTP - THỜI GIAN
+// =============================================================================
 /*
- * Ham: guiTrangThaiLED
- * Mo ta : Gui trang thai LED hien tai len MQTT
- *         Chi gui khi gia tri thay doi so voi lan gui truoc
- */
-void guiTrangThaiLED()
-{
-    // Kiem tra da ket noi MQTT chua
-    if (!mqttClient.connected()) return;
-
-    // Kiem tra co thay doi gi khong
-    if (ledState == lastLedStateSent && brightness == lastBrightnessSent) return;
-
-    // Cap nhat gia tri da gui
-    lastLedStateSent   = ledState;
-    lastBrightnessSent = brightness;
-
-    // Tao chuoi JSON chua trang thai LED
-    char buf[64];
-    snprintf(buf, sizeof(buf),
-             "{\"ledState\":%s,\"brightness\":%d}",
-             ledState ? "true" : "false",
-             brightness);
-
-    mqttClient.publish(TOPIC_LED_STS, buf);
-}
-
-/*
- * Ham: ketNoiMQTT
- * Mo ta : Ket noi den server MQTT, dang ky nhận lenh LED
- */
-void ketNoiMQTT()
-{
-    // Tao ID client ngau nhien de tranh trung lap
-    String clientId = "esp8266-nhom6-" + String(random(1000, 9999));
-
-    if (mqttClient.connect(clientId.c_str(), MQTT_USER, MQTT_PASS)) {
-        Serial.println("MQTT connected!");
-        // Dang ky nhan lenh LED tu Node-RED
-        mqttClient.subscribe(TOPIC_LED_CMD);
-    } else {
-        Serial.print("MQTT that bai, ma loi: ");
-        Serial.println(mqttClient.state());
-    }
-}
-
-/*
- * Ham: xuLyLenhLED
- * Mo ta : Xu ly cac lenh LED nhan duoc tu Node-RED qua MQTT
- *         Ho tro 3 dinh dang: JSON, so nguyen (slider), van ban (true/false/on/off)
+ * Đồng bộ giờ qua NTP (Network Time Protocol) để:
+ *   - Hiển thị giờ chính xác trên Serial / OLED
+ *   - Dựa vào tự động bật/tắt đèn theo giờ (18h-6h)
  *
- * Vi du tin nhan:
- *   {"brightness":70}     -> Dat do sang 70%
- *   {"ledState":true}    -> Bat den
- *   "50"                  -> Slider 50%
- *   "true" / "on"        -> Bat den
- *   "false" / "off"      -> Tat den
+ * Server  : pool.ntp.org (trả về giờ UTC)
+ * Lệch múi: UTC+7 (Việt Nam, không có giờ mùa hè / daylight saving)
+ *   -> Tham số offset = 7 * 3600 = 25200 giây
+ *
+ * Cú pháp hàm configTime():
+ *   configTime(gmtOffset_sec, daylightOffset_sec, server)
+ *     gmtOffset_sec      : số giây lệch so với UTC (+7h = +25200s cho VN)
+ *     daylightOffset_sec : số giây DST (Việt Nam = 0, không có giờ hè)
+ *     server             : địa chỉ server NTP
  */
-void xuLyLenhLED(String message)
+const char *NTP_SERVER = "pool.ntp.org";          // Server NTP quốc tế
+const long  GMT_OFFSET_SEC_VIETNAM = 7L * 3600L;  // Lệch UTC+7 (giây)
+
+/*
+ * ntpSynced
+ *   - Flag cho biết đồng hồ NTP đã được đồng bộ thành công chưa.
+ *   - Ban đầu = false, được đặt = true trong hàm syncTime() khi NTP thành công.
+ *   - Dùng để đảm bảo schedule (bật/tắt đèn theo giờ) chỉ chạy khi giờ đã chính
+ *     xác, tránh trường hợp đồng hồ bị reset về epoch 0 (00:00 1/1/1970 UTC).
+ */
+bool ntpSynced = false;
+
+
+// =============================================================================
+// ========================  ĐỊNH NGHĨA HÀM  ====================================
+// =============================================================================
+
+
+// -----------------------------------------------------------------------------
+// THỜI GIAN (NTP)
+// -----------------------------------------------------------------------------
+
+/*
+ * Hàm: syncTime
+ * Mục đích: Đồng bộ đồng hồ ESP8266 với server NTP (giờ UTC+7 Việt Nam)
+ *
+ * Các bước:
+ *   1. Gọi configTime() để cấu hình offset +7h và server NTP
+ *   2. Gọi time(nullptr) để lấy giờ hiện tại (số giây từ 01/01/1970 UTC)
+ *   3. Chờ tối đa 10 lần (5 giây) để nhận được giờ
+ *   4. Nếu thành công: gọi localtime() để chuyển đổi sang cấu trúc tm
+ *      (giờ local VN = UTC + 7h)
+ *   5. In kết quả ra Serial
+ */
+void syncTime()
 {
-    // ---- Dinh dang JSON: {"brightness":70} hoac {"ledState":true} ----
-    if (message.startsWith("{")) {
-        StaticJsonDocument<256> doc;
-        DeserializationError err = deserializeJson(doc, message);
+  /*
+   * gmtOffset_sec      = 7 * 3600 = 25200 giây  (UTC+7)
+   * daylightOffset_sec = 0       (Việt Nam không có DST)
+   */
+  configTime(GMT_OFFSET_SEC_VIETNAM, 0, NTP_SERVER);
 
-        if (!err) {
-            // Xu ly do sang tu JSON
-            if (doc.containsKey("brightness")) {
-                brightness = doc["brightness"].as<int>();
-                brightness = constrain(brightness, 0, 100);  // Gioi han 0-100%
-                analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
-                ledState = (brightness > 0);
-                savedBrightness = brightness;
-                lastManualTime  = millis();
+  Serial.println("Đang lấy giờ từ NTP...");
+  time_t now = time(nullptr);
+  int wait = 0;
 
-                Serial.printf("[LED] Do sang: %d%%\n", brightness);
-            }
-            // Xu ly trang thai tu JSON
-            else if (doc.containsKey("ledState")) {
-                if (doc["ledState"].as<bool>()) {
-                    // Bat den
-                    brightness = 100;
-                    analogWrite(LED_PIN, 255);
-                    ledState = true;
-                    savedBrightness = 100;
-                    lastManualTime  = millis();
-                    Serial.println("[LED] BAT");
-                } else {
-                    // Tat den
-                    brightness = 0;
-                    analogWrite(LED_PIN, 0);
-                    ledState = false;
-                    savedBrightness = 0;
-                    lastManualTime  = millis();
-                    Serial.println("[LED] TAT");
-                }
-            }
-        }
-        guiTrangThaiLED();
-        return;
-    }
+  /*
+   * now < 8*3600*2 = 57600 nghĩa là giờ chưa đồng bộ (còn là 0 hoặc giá trị nhỏ).
+   * Chờ tối đa 10 lần, mỗi lần delay 500ms -> tối đa 5 giây.
+   */
+  while (now < 8 * 3600 * 2 && wait < 10) {
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+    wait++;
+  }
+  Serial.println();
 
-    // ---- Dinh dang so nguyen (slider tu Node-RED): "0" - "100" ----
-    bool isNumeric = true;
-    for (unsigned int i = 0; i < message.length(); i++) {
-        if (!isdigit((unsigned char)message[i])) {
-            isNumeric = false;
-            break;
-        }
-    }
+  if (now > 8 * 3600 * 2) {
+    /*
+     * localtime() chuyển đổi UTC -> giờ địa phương
+     * theo configTime(25200, 0, ...) thì giờ VN = UTC + 7h
+     */
+    struct tm *t = localtime(&now);
+    Serial.printf("[TIME] Giờ HN: %02d:%02d:%02d | Ngày: %02d/%02d/%04d\n",
+                  t->tm_hour, t->tm_min, t->tm_sec,
+                  t->tm_mday, t->tm_mon + 1, t->tm_year + 1900);
+    Serial.println("Đồng hồ sync thành công!");
+    ntpSynced = true;       // Đánh dấu NTP đã đồng bộ thành công
+    lastNTPSync = millis(); // Lưu thời điểm đồng bộ
+  } else {
+    Serial.println("Đồng hồ chưa sync được.");
+  }
+}
 
-    if (isNumeric) {
-        brightness = message.toInt();
-        brightness = constrain(brightness, 0, 100);
-        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
+
+// -----------------------------------------------------------------------------
+// KIỂM TRA KHOẢNG THỜI GIAN TRONG NGÀY
+// -----------------------------------------------------------------------------
+
+/*
+ * Hàm: isEveningPeriod
+ * Mục đích: Kiểm tra hiện tại có phải là buổi tối (18h - 05h59)
+ * Trả về : true nếu 18:00 <= giờ < 06:00
+ *
+ * Giả sử: time() trả về giờ địa phương (đã cộng +7h)
+ */
+bool isEveningPeriod()
+{
+  time_t now = time(nullptr);
+  struct tm *t = localtime(&now);
+  int h = t->tm_hour;
+  return (h >= 18 || h < 6);   // 18:00 - 05:59
+}
+
+/*
+ * Hàm: isMorningOffPeriod
+ * Mục đích: Kiểm tra hiện tại có phải là buổi sáng (06h - 17h59)
+ * Trả về : true nếu 06:00 <= giờ < 18:00
+ */
+bool isMorningOffPeriod()
+{
+  time_t now = time(nullptr);
+  struct tm *t = localtime(&now);
+  int h = t->tm_hour;
+  return (h >= 6 && h < 18);   // 06:00 - 17:59
+}
+
+
+// -----------------------------------------------------------------------------
+// GỬI TRẠNG THÁI LED LÊN MQTT
+// -----------------------------------------------------------------------------
+
+/*
+ * Hàm: publishLedStatusIfNeeded
+ * Mục đích: Gửi trạng thái LED (bật/tắt, độ sáng) lên topic iot/led/status
+ *
+ * Chỉ gửi khi:
+ *   - Đã kết nối MQTT rồi
+ *   - ledState HOẶC brightness thay đổi so với giá trị đã gửi lần cuối
+ *
+ * Payload JSON: {"ledState":true/false,"brightness":0-100}
+ * Mục đích: Đồng bộ trạng thái đèn trên dashboard Node-RED
+ */
+void publishLedStatusIfNeeded()
+{
+  if (!mqtt.connected())
+    return;
+
+  // Nếu giá trị không thay đổi so với lần gửi trước -> bỏ qua
+  if (ledState == lastLedStateSent && brightness == lastBrightnessPublished)
+    return;
+
+  // Cập nhật giá trị đã gửi
+  lastLedStateSent       = ledState;
+  lastBrightnessPublished = brightness;
+
+  char ledBuf[64];
+  snprintf(ledBuf, sizeof(ledBuf),
+           "{\"ledState\":%s,\"brightness\":%d}",
+           ledState ? "true" : "false",
+           brightness);
+
+  mqtt.publish(mqtt_led_sts, ledBuf);
+}
+
+
+// -----------------------------------------------------------------------------
+// CALLBACK MQTT - XỬ LÝ LỆNH TỪ NODE-RED
+// -----------------------------------------------------------------------------
+
+/*
+ * Hàm: mqttCallback
+ * Mục đích: Xử lý tin nhắn nhận được từ topic iot/led/power/set
+ *
+ * Chỉ xử lý tin nhắn từ topic mqtt_led.
+ * Các định dạng tin nhắn hỗ trợ:
+ *
+ *   1. JSON  : {"brightness":70}   -> Đặt độ sáng 70%
+ *              {"ledState":true}   -> Bật đèn (100%)
+ *              {"ledState":false}  -> Tắt đèn (0%)
+ *
+ *   2. Số    : "50"                -> Slider: đặt độ sáng 50%
+ *
+ *   3. Văn bản: "true" / "on"      -> Bật đèn
+ *               "false" / "off"    -> Tắt đèn
+ *
+ * Sau khi xử lý, gọi publishLedStatusIfNeeded() để gửi trạng thái về
+ * Node-RED (đồng bộ dashboard).
+ *
+ * Tham số:
+ *   topic   : topic MQTT của tin nhắn
+ *   payload : nội dung tin nhắn (bytes thuần)
+ *   len     : độ dài tin nhắn (số bytes)
+ */
+void mqttCallback(char *topic, byte *payload, unsigned int len)
+{
+  // Chỉ xử lý topic iot/led/power/set, bỏ qua các topic khác
+  if (String(topic) != mqtt_led)
+    return;
+
+  // Chuyển payload (bytes) thành String để xử lý
+  String msg;
+  for (unsigned int i = 0; i < len; i++)
+    msg += (char)payload[i];
+
+  // ===== ĐỊNH DẠNG 1: JSON =====
+  if (msg.startsWith("{")) {
+    DynamicJsonDocument doc(256);
+    DeserializationError err = deserializeJson(doc, msg);
+
+    if (!err) {
+      // {"brightness":70} - Đặt độ sáng từ 0-100%
+      if (doc.containsKey("brightness")) {
+        brightness = doc["brightness"].as<int>();
+        brightness = constrain(brightness, 0, 100);                    // Giới hạn 0-100
+        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));         // PWM 0-255
         ledState = (brightness > 0);
-        savedBrightness = brightness;
-        lastManualTime  = millis();
-
-        Serial.printf("[LED] Do sang (slider): %d%%\n", brightness);
-        guiTrangThaiLED();
-        return;
+        lastBrightness = brightness;       // Lưu lại để khôi phục
+        lastManualTime = millis();         // Đánh dấu thao tác tay
+        Serial.printf("[LED] brightness: %d%%\n", brightness);
+      }
+      // {"ledState":true/false} - Bật hoặc tắt đèn
+      else if (doc.containsKey("ledState")) {
+        if (doc["ledState"].as<bool>()) {
+          brightness = 100;
+          analogWrite(LED_PIN, 255);
+          ledState = true;
+          lastBrightness = 100;
+          lastManualTime = millis();
+          Serial.println("[LED] ON");
+        } else {
+          brightness = 0;
+          analogWrite(LED_PIN, 0);
+          ledState = false;
+          lastBrightness = 0;
+          lastManualTime = millis();
+          Serial.println("[LED] OFF");
+        }
+      }
     }
+    publishLedStatusIfNeeded();
+    return;
+  }
 
-    // ---- Dinh dang van ban: "true"/"false"/"on"/"off" ----
-    bool lenhBat = (message == "true" || message == "on");
-
-    if (!lenhBat && message != "false" && message != "off") return;
-
-    brightness = lenhBat ? 100 : 0;
-    analogWrite(LED_PIN, lenhBat ? 255 : 0);
-    ledState = lenhBat;
-    savedBrightness = brightness;
-    lastManualTime  = millis();
-
-    Serial.println(lenhBat ? "[LED] BAT" : "[LED] TAT");
-    guiTrangThaiLED();
-}
-
-/*
- * Ham: mqttCallback
- * Mo ta : Ham callback duoc goi khi nhan duoc tin nhan MQTT
- *         Chi xu ly tin nhan tu topic LED
- */
-void mqttCallback(char *topic, byte *payload, unsigned int length)
-{
-    // Chi xu ly topic LED, bo qua cac topic khac
-    if (String(topic) != TOPIC_LED_CMD) return;
-
-    // Chuyen payload thanh chuoi
-    String msg;
-    for (unsigned int i = 0; i < length; i++) {
-        msg += (char)payload[i];
+  // ===== ĐỊNH DẠNG 2: SỐ NGUYÊN (slider Node-RED) =====
+  bool onlyDigits = msg.length() > 0;
+  for (unsigned int i = 0; i < msg.length(); i++) {
+    if (!isdigit((unsigned char)msg[i])) {
+      onlyDigits = false;
+      break;
     }
+  }
+  if (onlyDigits) {
+    brightness = msg.toInt();
+    brightness = constrain(brightness, 0, 100);
+    analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
+    ledState = (brightness > 0);
+    lastBrightness = brightness;
+    lastManualTime = millis();
+    Serial.printf("[LED] brightness (raw): %d%%\n", brightness);
+    publishLedStatusIfNeeded();
+    return;
+  }
 
-    xuLyLenhLED(msg);
-}
+  // ===== ĐỊNH DẠNG 3: VĂN BẢN (true/false/on/off) =====
+  bool on = (msg == "true" || msg == "on");
+  if (!on && msg != "false" && msg != "off")
+    return;  // Không phải lệnh hợp lệ -> bỏ qua
 
+  brightness = on ? 100 : 0;
+  analogWrite(LED_PIN, on ? 255 : 0);
+  ledState = on;
+  lastBrightness = brightness;
+  lastManualTime = millis();
+  Serial.println(on ? "[LED] ON" : "[LED] OFF");
 
-// =============================================================================
-// ===========================  CAM BIEN  =======================================
-// =============================================================================
-
-/*
- * Ham: docCamBien
- * Mo ta : Doc nhiet do va do am tu cam bien DHT11
- * Tra ve: true neu doc thanh cong, false neu that bai
- */
-bool docCamBien()
-{
-    temperature = dht.readTemperature();
-    humidity    = dht.readHumidity();
-
-    // Kiem tra loi doc cam bien
-    if (isnan(temperature) || isnan(humidity)) {
-        Serial.println("[LOI] Doc DHT11 that bai!");
-        return false;
-    }
-
-    Serial.printf("[DHT] Nhiet do: %.1f%cC  |  Do am: %.1f%%\n",
-                  temperature, 0xB0, humidity);
-    return true;
-}
-
-/*
- * Ham: kiemTraCanhBao
- * Mo ta : Kiem tra nhiet do va do am co vuot nguong canh bao khong
- */
-void kiemTraCanhBao()
-{
-    bool nhietDo_cao = (temperature > THRESHOLD_TEMP_HIGH);
-    bool nhietDo_thap = (temperature < THRESHOLD_TEMP_LOW);
-    bool doAm_cao    = (humidity > THRESHOLD_HUMI_HIGH);
-    bool doAm_thap   = (humidity < THRESHOLD_HUMI_LOW);
-
-    if (nhietDo_cao) {
-        Serial.printf("       [CANH BAO] Nhiet do qua CAO: %.1f%cC > %.1f%cC\n",
-                      temperature, 0xB0, THRESHOLD_TEMP_HIGH, 0xB0);
-    }
-    if (nhietDo_thap) {
-        Serial.printf("       [CANH BAO] Nhiet do qua THAP: %.1f%cC < %.1f%cC\n",
-                      temperature, 0xB0, THRESHOLD_TEMP_LOW, 0xB0);
-    }
-    if (doAm_cao) {
-        Serial.printf("       [CANH BAO] Do am qua CAO: %.1f%% > %.1f%%\n",
-                      humidity, THRESHOLD_HUMI_HIGH);
-    }
-    if (doAm_thap) {
-        Serial.printf("       [CANH BAO] Do am qua THAP: %.1f%% < %.1f%%\n",
-                      humidity, THRESHOLD_HUMI_LOW);
-    }
+  publishLedStatusIfNeeded();
 }
 
 
-// =============================================================================
-// ===========================  GUI MQTT  =======================================
-// =============================================================================
+// -----------------------------------------------------------------------------
+// KẾT NỐI WIFI
+// -----------------------------------------------------------------------------
 
 /*
- * Ham: guiDuLieuCamBien
- * Mo ta : Gui du lieu cam bien (nhiet do, do am, canh bao) len Node-RED qua MQTT
+ * Hàm: connectWiFi
+ * Mục đích: Kết nối ESP8266 đến mạng WiFi
  *
- * Payload JSON:
+ * - Sử dụng WiFi.begin(ssid, password) để bắt đầu kết nối.
+ * - Vòng while đợi cho đến khi WiFi.status() == WL_CONNECTED.
+ * - Mỗi lần delay(500) để tránh watchdog timer reset.
+ * - Sau khi kết nối thành công, in địa chỉ IP ra Serial.
+ */
+void connectWiFi()
+{
+  WiFi.begin(ssid, password);
+  Serial.print("Đang kết nối WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);   // Chờ 0.5s, tránh ESP8266 watchdog reset
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi connected! IP: " + WiFi.localIP().toString());
+}
+
+
+// -----------------------------------------------------------------------------
+// KẾT NỐI MQTT
+// -----------------------------------------------------------------------------
+
+/*
+ * Hàm: connectMQTT
+ * Mục đích: Kết nối ESP8266 đến HiveMQ Cloud qua MQTT/TLS
+ *
+ * Các bước:
+ *   1. Tạo client ID ngẫu nhiên (tránh trùng lặp khi ESP reset nhiều lần)
+ *   2. Gọi mqtt.connect() với user/password (TLS)
+ *   3. Nếu thành công: đăng ký nhận topic iot/led/power/set
+ *   4. Nếu thất bại: in mã lỗi MQTT (rc) ra Serial
+ *
+ * Mã lỗi MQTT thường gặp:
+ *   -2 : MQTT_CONNECTION_TIMEOUT
+ *   -4 : MQTT_CONNECTION_UNAUTHORIZED (user/pass sai)
+ *   -5 : MQTT_BAD_CREDENTIALS
+ */
+void connectMQTT()
+{
+  // Tạo ID ngẫu nhiên: "esp8266-nhom6-xxxx" (xxxx: 1000-9999)
+  String clientId = "esp8266-nhom6-" + String(random(1000, 9999));
+
+  if (mqtt.connect(clientId.c_str(), mqtt_user, mqtt_pass)) {
+    Serial.println("MQTT connected!");
+    mqtt.subscribe(mqtt_led);   // Đăng ký nhận lệnh LED từ Node-RED
+  } else {
+    Serial.print("MQTT thất bại, rc=");
+    Serial.println(mqtt.state());  // In mã lỗi ra Serial
+  }
+}
+
+
+// -----------------------------------------------------------------------------
+// GỬI DỮ LIỆU CẢM BIẾN SANG NODE-RED (MQTT)
+// -----------------------------------------------------------------------------
+
+/*
+ * Hàm: publishEnvData
+ * Mục đích: Gửi dữ liệu cảm biến (nhiệt độ, độ ẩm, cảnh báo) lên topic iot/env/data
+ *
+ * Payload JSON (300 byte dự kiến):
  *   {
  *     "temperature": 28.0,
  *     "humidity": 65.0,
@@ -447,233 +524,268 @@ void kiemTraCanhBao()
  *     "tempAlertLow": false,
  *     "humiAlertHigh": false,
  *     "humiAlertLow": false,
- *     "message": "Moi truong binh thuong"
+ *     "message": "Môi trường bình thường"
  *   }
+ *
+ * Tham số:
+ *   tempHigh, tempLow : true nếu nhiệt độ vượt ngưỡng TEMP_MAX / TEMP_MIN
+ *   humiHigh, humiLow : true nếu độ ẩm vượt ngưỡng HUMI_MAX / HUMI_MIN
+ *
+ * Sau khi gửi dữ liệu cảm biến, gọi publishLedStatusIfNeeded() để đồng bộ
+ * trạng thái LED (nếu có thay đổi).
  */
-void guiDuLieuCamBien(bool nhietDoCao, bool nhietDoThap,
-                      bool doAmCao, bool doAmThap)
+void publishEnvData(bool tempHigh, bool tempLow, bool humiHigh, bool humiLow)
 {
-    char buf[300];
-    const char *thongBao;
+  char buf[300];
+  const char *msg;
 
-    // Xac dinh thong bao theo tinh trang
-    if (nhietDoCao)    thongBao = "Nhiet do qua CAO!";
-    else if (nhietDoThap) thongBao = "Nhiet do qua THAP!";
-    else if (doAmCao)  thongBao = "Do am qua CAO!";
-    else if (doAmThap) thongBao = "Do am qua THAP!";
-    else               thongBao = "Moi truong BINH THUONG";
+  // Xác định thông báo theo tình trạng môi trường
+  if (tempHigh)       msg = "Nhiệt độ quá cao!";
+  else if (tempLow)  msg = "Nhiệt độ quá thấp!";
+  else if (humiHigh) msg = "Độ ẩm quá cao!";
+  else if (humiLow)  msg = "Độ ẩm quá thấp!";
+  else               msg = "Môi trường bình thường";
 
-    // Tao chuoi JSON
-    snprintf(buf, sizeof(buf),
-             "{\"temperature\":%.1f,\"humidity\":%.1f,"
-             "\"tempAlertHigh\":%s,\"tempAlertLow\":%s,"
-             "\"humiAlertHigh\":%s,\"humiAlertLow\":%s,"
-             "\"message\":\"%s\"}",
-             temperature, humidity,
-             nhietDoCao    ? "true" : "false",
-             nhietDoThap   ? "true" : "false",
-             doAmCao       ? "true" : "false",
-             doAmThap      ? "true" : "false",
-             thongBao);
+  // Tạo chuỗi JSON
+  snprintf(buf, sizeof(buf),
+           "{\"temperature\":%.1f,\"humidity\":%.1f,"
+           "\"tempAlertHigh\":%s,\"tempAlertLow\":%s,"
+           "\"humiAlertHigh\":%s,\"humiAlertLow\":%s,"
+           "\"message\":\"%s\"}",
+           temperature, humidity,
+           tempHigh  ? "true" : "false",
+           tempLow   ? "true" : "false",
+           humiHigh  ? "true" : "false",
+           humiLow   ? "true" : "false",
+           msg);
 
-    // Gui len MQTT
-    mqttClient.publish(TOPIC_ENV, buf);
-    guiTrangThaiLED();
+  mqtt.publish(mqtt_env, buf);
+  publishLedStatusIfNeeded();
+}
+
+
+// -----------------------------------------------------------------------------
+// HIỂN THỊ OLED SH1106 128x64
+// -----------------------------------------------------------------------------
+#define OLED_FONT u8g2_font_8x13_tf   // Font 8x13 pixel, tiếng Anh
+
+// Tọa độ Y của 3 dòng trên màn hình OLED 64 pixel
+static const uint8_t OLED_Y_ROW1 = 14;
+static const uint8_t OLED_Y_ROW2 = 28;
+static const uint8_t OLED_Y_ROW3 = 42;
+
+/*
+ * Hàm: displayOLED
+ * Mục đích: Hiển thị thông tin lên màn hình OLED SH1106
+ *
+ * Bố cục 3 dòng:
+ *   Dòng 1: Nhiệt độ (nếu cảnh báo: hiển "Cao!" hoặc "Thấp!")
+ *   Dòng 2: Độ ẩm    (nếu cảnh báo: hiển "Cao!" hoặc "Thấp!")
+ *   Dòng 3: Trạng thái đèn LED (BẬT/TẮT + %)
+ *
+ * Tham số:
+ *   tempHigh, tempLow : có hiển thị cảnh báo nhiệt độ không
+ *   humiHigh, humiLow : có hiển thị cảnh báo độ ẩm không
+ */
+void displayOLED(bool tempHigh, bool tempLow, bool humiHigh, bool humiLow)
+{
+  char buf[40];
+
+  u8g2.clearBuffer();
+  u8g2.setFont(OLED_FONT);
+
+  // ----- Dòng 1: Nhiệt độ -----
+  if (!tempHigh && !tempLow) {
+    // Môi trường bình thường: hiển giá trị + ngưỡng
+    sprintf(buf, "T:%.1f%cC %d-%d%cC", temperature, 0xB0,
+            (int)TEMP_MIN, (int)TEMP_MAX, 0xB0);
+    u8g2.drawStr(0, OLED_Y_ROW1, buf);
+  } else {
+    // Có cảnh báo: hiển giá trị + cảnh báo ở bên phải
+    sprintf(buf, "T:%.1f%cC", temperature, 0xB0);
+    u8g2.drawStr(0, OLED_Y_ROW1, buf);
+    u8g2.drawStr(72, OLED_Y_ROW1, tempHigh ? "Cao!" : "Thap!");
+  }
+
+  // ----- Dòng 2: Độ ẩm -----
+  if (!humiHigh && !humiLow) {
+    sprintf(buf, "H:%.1f%% %d-%d%%", humidity, (int)HUMI_MIN, (int)HUMI_MAX);
+    u8g2.drawStr(0, OLED_Y_ROW2, buf);
+  } else {
+    sprintf(buf, "H:%.1f%%", humidity);
+    u8g2.drawStr(0, OLED_Y_ROW2, buf);
+    u8g2.drawStr(72, OLED_Y_ROW2, humiHigh ? "Cao!" : "Thap!");
+  }
+
+  // ----- Dòng 3: Trạng thái đèn LED -----
+  sprintf(buf, "Den: %s %d%%", ledState ? "BAT" : "TAT", brightness);
+  u8g2.drawStr(0, OLED_Y_ROW3, buf);
+
+  // Gửi dữ liệu từ buffer ra màn hình OLED
+  u8g2.sendBuffer();
 }
 
 
 // =============================================================================
-// ===========================  OLED  ===========================================
+// ===========================  CHƯƠNG TRÌNH CHÍNH  =============================
 // =============================================================================
 
 /*
- * Ham: hienThiOLED
- * Mo ta : Hien thi thong tin len man hinh OLED SH1106
- *         Giao dien 4 dong:
- *           Dong 1: Nhiet do + Nguong
- *           Dong 2: Do am + Nguong
- *           Dong 3: Trang thai den LED
- *           Dong 4: Che do hoat dong (Auto / Tay)
+ * Hàm: setup
+ * Mục đích: Khởi tạo phần cứng và kết nối ban đầu (chỉ chạy 1 lần)
+ *
+ * Thứ tự khởi tạo:
+ *   1. Serial    - Để debug
+ *   2. GPIO      - Cài đặt chân LED
+ *   3. DHT11     - Khởi tạo cảm biến nhiệt độ / độ ẩm
+ *   4. OLED      - Khởi tạo màn hình, hiển thị thông báo
+ *   5. WiFi      - Kết nối mạng (chờ tới thành công)
+ *   6. NTP       - Đồng bộ thời gian (chờ tới thành công)
+ *   7. MQTT      - Cấu hình server, callback, kết nối
  */
-void hienThiOLED(bool nhietDoCao, bool nhietDoThap,
-                bool doAmCao, bool doAmThap)
-{
-    char buf[40];
-
-    oled.clearBuffer();
-    oled.setFont(u8g2_font_8x13_tf);
-
-    // Dong 1: Nhiet do
-    if (!nhietDoCao && !nhietDoThap) {
-        sprintf(buf, "T:%.1f%cC %d-%d%cC", temperature, 0xB0,
-                (int)THRESHOLD_TEMP_LOW, (int)THRESHOLD_TEMP_HIGH, 0xB0);
-        oled.drawStr(0, 14, buf);
-    } else {
-        sprintf(buf, "T:%.1f%cC", temperature, 0xB0);
-        oled.drawStr(0, 14, buf);
-        oled.drawStr(72, 14, nhietDoCao ? "CAO!" : "THAP!");
-    }
-
-    // Dong 2: Do am
-    if (!doAmCao && !doAmThap) {
-        sprintf(buf, "H:%.1f%% %d-%d%%", humidity,
-                (int)THRESHOLD_HUMI_LOW, (int)THRESHOLD_HUMI_HIGH);
-        oled.drawStr(0, 28, buf);
-    } else {
-        sprintf(buf, "H:%.1f%%", humidity);
-        oled.drawStr(0, 28, buf);
-        oled.drawStr(72, 28, doAmCao ? "CAO!" : "THAP!");
-    }
-
-    // Dong 3: Trang thai den LED
-    sprintf(buf, "Den: %s %d%%", ledState ? "BAT" : "TAT", brightness);
-    oled.drawStr(0, 42, buf);
-
-    // Dong 4: Che do hoat dong
-    bool cheDoTuDong = (millis() - lastManualTime) >= MANUAL_TIMEOUT;
-    oled.drawStr(0, 56, cheDoTuDong ? "Che do: AUTO" : "Che do: TAY");
-
-    oled.sendBuffer();
-}
-
-
-// =============================================================================
-// ===========================  TU DONG THEO GIO  ===============================
-// =============================================================================
-
-/*
- * Ham: kiemTraBuoiToi
- * Mo ta : Kiem tra xem hien tai co phai la buoi toi (18h-06h) khong
- * Tra ve: true neu la 18h-06h, false neu la 06h-18h
- */
-bool kiemTraBuoiToi()
-{
-    time_t now = time(nullptr);
-    struct tm *t = localtime(&now);
-    int gio = t->tm_hour;
-    return (gio >= 18 || gio < 6);  // 18:00 - 05:59
-}
-
-/*
- * Ham: kiemTraBuoiSang
- * Mo ta : Kiem tra xem hien tai co phai la buoi sang (06h-18h) khong
- * Tra ve: true neu la 06h-18h, false neu la 18h-06h
- */
-bool kiemTraBuoiSang()
-{
-    time_t now = time(nullptr);
-    struct tm *t = localtime(&now);
-    int gio = t->tm_hour;
-    return (gio >= 6 && gio < 18);  // 06:00 - 17:59
-}
-
-/*
- * Ham: xuLyTuDongTheoGio
- * Mo ta : Tu dong bat den luc toi (18h), tat den luc sang (06h)
- *         Chi hoat dong khi nguoi dung chua thao tac tay trong 60 phut
- */
-void xuLyTuDongTheoGio()
-{
-    // Tinh thoi gian da troi qua tu lan thao tac tay cuoi
-    unsigned long elapsed = (millis() >= lastManualTime)
-                            ? (millis() - lastManualTime)
-                            : 0;
-
-    // Neu nguoi dung van con thao tac tay trong 60 phut -> bo qua
-    if (elapsed < MANUAL_TIMEOUT) return;
-
-    // Buoi toi (18h-06h): Tu dong bat den
-    if (kiemTraBuoiToi() && !ledState) {
-        brightness = (savedBrightness > 0) ? savedBrightness : 100;
-        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
-        ledState = true;
-        Serial.println("[TU DONG] Bat den luc toi (18h-06h)");
-        guiTrangThaiLED();
-    }
-    // Buoi sang (06h-18h): Tu dong tat den
-    else if (kiemTraBuoiSang() && ledState) {
-        savedBrightness = brightness;  // Luu lai do sang hien tai
-        brightness = 0;
-        analogWrite(LED_PIN, 0);
-        ledState = false;
-        Serial.println("[TU DONG] Tat den luc sang (06h-18h)");
-        guiTrangThaiLED();
-    }
-}
-
-
-// =============================================================================
-// ===========================  MAIN  ==========================================
-// =============================================================================
-
 void setup()
 {
-    Serial.begin(115200);
-    delay(500);
+  Serial.begin(115200);   // Tốc độ Serial: 115200 baud
+  delay(500);
 
-    // Khoi tao phan cung
-    khoiTaoGPIO();
-    dht.begin();
-    khoiTaoOLED();
+  // --- Khởi tạo GPIO ---
+  pinMode(LED_PIN, OUTPUT);
+  analogWrite(LED_PIN, 0);  // LED ban đầu: tắt
 
-    // Ket noi mang
-    ketNoiWiFi();
-    dongBoThoiGian();
+  // --- Khởi tạo DHT11 ---
+  dht.begin();
 
-    // Cau hinh MQTT
-    espClient.setInsecure();  // Bo qua xac thuc certificate (cho HiveMQ Cloud)
-    mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
-    mqttClient.setCallback(mqttCallback);
-    randomSeed(micros());
+  // --- Khởi tạo OLED SH1106 ---
+  u8g2.begin();
+  u8g2.clearBuffer();
+  u8g2.setFont(OLED_FONT);
+  u8g2.drawStr(0, 20, "Đang khởi tạo...");
+  u8g2.drawStr(0, 36, "WiFi + Asia/HN...");
+  u8g2.sendBuffer();
 
-    Serial.println("=== ESP8266 IoT Nhom 6 - Khoi tao xong ===");
+  // --- Kết nối WiFi + Đồng bộ NTP ---
+  connectWiFi();
+  syncTime();
+
+  // --- Khởi tạo MQTT ---
+  espClient.setInsecure();              // Bỏ qua xác thực certificate (TLS)
+  mqtt.setServer(mqtt_server, mqtt_port);
+  mqtt.setCallback(mqttCallback);       // Hàm xử lý tin nhắn nhận được
+  randomSeed(micros());                 // Khởi tạo bộ sinh số ngẫu nhiên
+
+  Serial.println("=== ESP8266 IoT Nhom 6 - Khoi tao xong ===");
 }
 
+/*
+ * Hàm: loop
+ * Mục đích: Vòng lặp chính - chạy liên tục sau khi setup() xong
+ *
+ * Mỗi chu kỳ loop():
+ *   1. Kiểm tra WiFi - nếu mất kết nối -> tự động kết nối lại
+ *   2. Kiểm tra MQTT  - nếu mất kết nối -> thử kết nối lại sau 5s
+ *   3. Gọi mqtt.loop() để xử lý tin nhắn MQTT (gọi callback)
+ *   4. Xử lý tự động bật/tắt đèn theo giờ (nếu ở chế độ AUTO)
+ *   5. Đọc cảm biến DHT11 (chu kỳ 20s) -> gửi MQTT + cập nhật OLED
+ */
 void loop()
 {
-    // ---- Kiem tra va ket noi lai WiFi neu bi mat ----
-    if (WiFi.status() != WL_CONNECTED) {
-        ketNoiWiFi();
-        dongBoThoiGian();
+  // ----- Kiểm tra & kết nối lại WiFi (nếu bị mất) -----
+  if (WiFi.status() != WL_CONNECTED) {
+    connectWiFi();
+    ntpSynced = false;  // Mất WiFi -> coi như cần đồng bộ NTP lại
+  }
+
+  // ----- Đồng bộ NTP định kỳ (1 giờ) -----
+  /*
+   * ESP8266 không có pin RTC nên mất nguồn sẽ mất giờ.
+   * Đồng bộ lại NTP mỗi 1 giờ để đảm bảo giờ luôn chính xác.
+   */
+  if (WiFi.status() == WL_CONNECTED) {
+    if (millis() - lastNTPSync >= INTERVAL_NTP) {
+      Serial.println("[NTP] Đồng bộ lại...");
+      syncTime();
+    }
+  }
+
+  // ----- Kiểm tra & kết nối lại MQTT (nếu bị mất) -----
+  if (!mqtt.connected()) {
+    if (millis() - lastMQTT > 5000) {  // Chờ 5s trước khi thử lại
+      lastMQTT = millis();
+      connectMQTT();
+    }
+  }
+  mqtt.loop();   // Xử lý nhận/trả tin nhắn MQTT (gọi callback)
+
+  // ----- Tự động bật/tắt đèn theo giờ -----
+  /*
+   * elapsed = thời gian đã trôi qua (ms) kể từ lần thao tác tay cuối.
+   * Nếu elapsed >= MANUAL_WINDOW (60 phút) -> cho phép chế độ tự động.
+   */
+  unsigned long elapsed = (millis() >= lastManualTime)
+    ? (millis() - lastManualTime)
+    : 0;
+
+  if (elapsed >= MANUAL_WINDOW) {
+    // Buổi tối (18h-6h) & đèn đang tắt -> tự động bật đèn
+    if (isEveningPeriod() && !ledState) {
+      brightness = (lastBrightness > 0) ? lastBrightness : 100;
+      analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
+      ledState = true;
+      Serial.println("[SCHEDULE] Tự động bật đèn (18h-6h)");
+      publishLedStatusIfNeeded();
+    }
+    // Buổi sáng (6h-18h) & đèn đang bật -> tự động tắt đèn
+    else if (isMorningOffPeriod() && ledState) {
+      lastBrightness = brightness;  // Lưu độ sáng trước khi tắt
+      brightness = 0;
+      analogWrite(LED_PIN, 0);
+      ledState = false;
+      Serial.println("[SCHEDULE] Tự động tắt đèn (6h-18h)");
+      publishLedStatusIfNeeded();
+    }
+  }
+
+  // ----- Đọc cảm biến DHT11 (chu kỳ 20s) -----
+  if (millis() - lastDHT >= INTERVAL_DHT) {
+    lastDHT = millis();
+
+    // --- Đọc nhiệt độ & độ ẩm ---
+    temperature = dht.readTemperature();
+    humidity    = dht.readHumidity();
+
+    if (isnan(temperature) || isnan(humidity)) {
+      Serial.println("[ERR] Đọc DHT11 thất bại!");
+    } else {
+      Serial.printf("[DHT] T:%.1fC  H:%.1f%%\n", temperature, humidity);
     }
 
-    // ---- Kiem tra va ket noi lai MQTT neu bi mat ----
-    if (!mqttClient.connected()) {
-        if (millis() - lastMQTTReconnect >= 5000) {
-            lastMQTTReconnect = millis();
-            ketNoiMQTT();
-        }
+    // --- Kiểm tra cảnh báo ngưỡng ---
+    bool tempHigh = !isnan(temperature) && (temperature > TEMP_MAX);
+    bool tempLow  = !isnan(temperature) && (temperature < TEMP_MIN);
+    bool humiHigh = !isnan(humidity)    && (humidity > HUMI_MAX);
+    bool humiLow  = !isnan(humidity)    && (humidity < HUMI_MIN);
+
+    if (tempHigh) {
+      Serial.printf("       [CANH BAO] Nhiệt độ quá cao: %.1fC > %.1fC\n",
+                    temperature, TEMP_MAX);
     }
-    mqttClient.loop();
-
-    // ---- Xu ly tu dong bat/tat den theo gio ----
-    xuLyTuDongTheoGio();
-
-    // ---- Doc cam bien DHT11 (moi 2 giay) ----
-    if (millis() - lastDHTTime >= DHT_INTERVAL) {
-        lastDHTTime = millis();
-
-        // Doc nhiet do va do am
-        if (docCamBien()) {
-            // Kiem tra canh bao
-            kiemTraCanhBao();
-
-            // Gui du lieu len MQTT (neu da ket noi)
-            if (mqttClient.connected()) {
-                bool nhietDoCao  = (temperature > THRESHOLD_TEMP_HIGH);
-                bool nhietDoThap = (temperature < THRESHOLD_TEMP_LOW);
-                bool doAmCao     = (humidity > THRESHOLD_HUMI_HIGH);
-                bool doAmThap    = (humidity < THRESHOLD_HUMI_LOW);
-
-                guiDuLieuCamBien(nhietDoCao, nhietDoThap, doAmCao, doAmThap);
-            }
-        }
-
-        // Cap nhat man hinh OLED
-        bool nhietDoCao  = (temperature > THRESHOLD_TEMP_HIGH);
-        bool nhietDoThap = (temperature < THRESHOLD_TEMP_LOW);
-        bool doAmCao     = (humidity > THRESHOLD_HUMI_HIGH);
-        bool doAmThap    = (humidity < THRESHOLD_HUMI_LOW);
-        hienThiOLED(nhietDoCao, nhietDoThap, doAmCao, doAmThap);
+    if (tempLow) {
+      Serial.printf("       [CANH BAO] Nhiệt độ quá thấp: %.1fC < %.1fC\n",
+                    temperature, TEMP_MIN);
     }
+    if (humiHigh) {
+      Serial.printf("       [CANH BAO] Độ ẩm quá cao: %.1f%% > %.1f%%\n",
+                    humidity, HUMI_MAX);
+    }
+    if (humiLow) {
+      Serial.printf("       [CANH BAO] Độ ẩm quá thấp: %.1f%% < %.1f%%\n",
+                    humidity, HUMI_MIN);
+    }
+
+    // --- Gửi MQTT & cập nhật OLED ---
+    if (mqtt.connected()) {
+      publishEnvData(tempHigh, tempLow, humiHigh, humiLow);
+    }
+    displayOLED(tempHigh, tempLow, humiHigh, humiLow);
+  }
 }
