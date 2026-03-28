@@ -97,6 +97,12 @@ int  brightness = 0;       // Độ sáng LED: 0-100 (quy đổi 0-255 cho PWM)
 float temperature = 0.0f;   // Nhiệt độ hiện tại (°C), lấy từ DHT11
 float humidity    = 0.0f;   // Độ ẩm hiện tại (%), lấy từ DHT11
 
+// Lưu trạng thái cảnh báo DHT11 (dùng chung cho OLED + MQTT callback)
+bool tempHighFlag = false;
+bool tempLowFlag  = false;
+bool humiHighFlag = false;
+bool humiLowFlag  = false;
+
 
 // =============================================================================
 // 6. BIẾN TRẠNG THÁI GỬI MQTT
@@ -381,11 +387,12 @@ void mqttCallback(char *topic, byte *payload, unsigned int len)
       if (doc.containsKey("brightness")) {
         brightness = doc["brightness"].as<int>();
         brightness = constrain(brightness, 0, 100);                    // Giới hạn 0-100
-        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));         // PWM 0-255
+        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));      // PWM 0-255
         ledState = (brightness > 0);
         lastBrightness = brightness;       // Lưu lại để khôi phục
-        lastManualTime = millis();         // Đánh dấu thao tác tay
+        lastManualTime = millis();          // Đánh dấu thao tác tay
         Serial.printf("[LED] brightness: %d%%\n", brightness);
+        displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
       }
       // {"ledState":true/false} - Bật hoặc tắt đèn
       else if (doc.containsKey("ledState")) {
@@ -396,6 +403,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int len)
           lastBrightness = 100;
           lastManualTime = millis();
           Serial.println("[LED] ON");
+          displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag);
         } else {
           brightness = 0;
           analogWrite(LED_PIN, 0);
@@ -403,6 +411,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int len)
           lastBrightness = 0;
           lastManualTime = millis();
           Serial.println("[LED] OFF");
+          displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag);
         }
       }
     }
@@ -427,6 +436,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int len)
     lastManualTime = millis();
     Serial.printf("[LED] brightness (raw): %d%%\n", brightness);
     publishLedStatusIfNeeded();
+    displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
     return;
   }
 
@@ -443,6 +453,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int len)
   Serial.println(on ? "[LED] ON" : "[LED] OFF");
 
   publishLedStatusIfNeeded();
+  displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
 }
 
 
@@ -674,6 +685,9 @@ void setup()
   randomSeed(micros());                 // Khởi tạo bộ sinh số ngẫu nhiên
 
   Serial.println("=== ESP8266 IoT Nhom 6 - Khoi tao xong ===");
+
+  // Hiển thị OLED ngay lần đầu (không cần chờ 20s)
+  displayOLED(false, false, false, false);
 }
 
 /*
@@ -733,6 +747,7 @@ void loop()
       ledState = true;
       Serial.println("[SCHEDULE] Tự động bật đèn (18h-6h)");
       publishLedStatusIfNeeded();
+      displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
     }
     // Buổi sáng (6h-18h) & đèn đang bật -> tự động tắt đèn
     else if (isMorningOffPeriod() && ledState) {
@@ -742,6 +757,7 @@ void loop()
       ledState = false;
       Serial.println("[SCHEDULE] Tự động tắt đèn (6h-18h)");
       publishLedStatusIfNeeded();
+      displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
     }
   }
 
@@ -764,6 +780,12 @@ void loop()
     bool tempLow  = !isnan(temperature) && (temperature < TEMP_MIN);
     bool humiHigh = !isnan(humidity)    && (humidity > HUMI_MAX);
     bool humiLow  = !isnan(humidity)    && (humidity < HUMI_MIN);
+
+    // Lưu trạng thái cảnh báo vào biến toàn cục (dùng chung cho OLED ngay lập tức khi thao tác LED)
+    tempHighFlag = tempHigh;
+    tempLowFlag  = tempLow;
+    humiHighFlag = humiHigh;
+    humiLowFlag  = humiLow;
 
     if (tempHigh) {
       Serial.printf("       [CANH BAO] Nhiệt độ quá cao: %.1fC > %.1fC\n",
