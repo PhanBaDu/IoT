@@ -273,8 +273,11 @@ void syncTime()
 
 /*
  * Hàm: isEveningPeriod
- * Mục đích: Kiểm tra hiện tại có phải là buổi tối (18h - 05h59)
- * Trả về : true nếu 18:00 <= giờ < 06:00
+ * Mục đích: Kiểm tra hiện tại có phải là buổi tối hoặc đêm khuya
+ * Trả về : true nếu 18:00 giờ tối - 05:59 sáng khuya
+ * Ví dụ  : 01:35 AM (01:35 sáng) -> true (đêm khuya, vẫn trong khoảng 18h-6h)
+ *           14:00 (14:00 chiều)   -> false (giờ hành chính)
+ *           20:00 (20:00 tối)     -> true (buổi tối)
  *
  * Giả sử: time() trả về giờ địa phương (đã cộng +7h)
  */
@@ -283,13 +286,16 @@ bool isEveningPeriod()
   time_t now = time(nullptr);
   struct tm *t = localtime(&now);
   int h = t->tm_hour;
-  return (h >= 18 || h < 6);   // 18:00 - 05:59
+  return (h >= 18 || h < 6);   // 18:00 (6h chiều) - 05:59 (6h sáng)
 }
 
 /*
  * Hàm: isMorningOffPeriod
- * Mục đích: Kiểm tra hiện tại có phải là buổi sáng (06h - 17h59)
- * Trả về : true nếu 06:00 <= giờ < 18:00
+ * Mục đích: Kiểm tra hiện tại có phải là ban ngày (6h sáng - 17h59)
+ * Trả về : true nếu 06:00 sáng <= giờ < 18:00 chiều
+ * Ví dụ  : 08:00 AM (08:00 sáng) -> true
+ *           13:00 (13:00 trưa)    -> true
+ *           01:35 AM (01:35 sáng)  -> false (đêm khuya)
  */
 bool isMorningOffPeriod()
 {
@@ -734,30 +740,53 @@ void loop()
   /*
    * elapsed = thời gian đã trôi qua (ms) kể từ lần thao tác tay cuối.
    * Nếu elapsed >= MANUAL_WINDOW (60 phút) -> cho phép chế độ tự động.
+   * Nếu lastManualTime == 0 (first boot):
+   *   - Nếu đang trong giờ bật đèn (18h-6h) -> bật đèn ngay
+   *   - Nếu đang trong giờ tắt đèn (6h-18h) -> tắt đèn ngay
+   * Lưu ý: chỉ chạy khi ntpSynced == true, vì trước khi NTP sync,
+   *   time(nullptr) trả về epoch 0 (00:00 1/1/1970 VN = 7h) -> schedule sai giờ.
    */
   unsigned long elapsed = (millis() >= lastManualTime)
     ? (millis() - lastManualTime)
     : 0;
 
-  if (elapsed >= MANUAL_WINDOW) {
-    // Buổi tối (18h-6h) & đèn đang tắt -> tự động bật đèn
-    if (isEveningPeriod() && !ledState) {
-      brightness = (lastBrightness > 0) ? lastBrightness : 100;
-      analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
-      ledState = true;
-      Serial.println("[SCHEDULE] Tự động bật đèn (18h-6h)");
-      publishLedStatusIfNeeded();
-      displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
-    }
-    // Buổi sáng (6h-18h) & đèn đang bật -> tự động tắt đèn
-    else if (isMorningOffPeriod() && ledState) {
-      lastBrightness = brightness;  // Lưu độ sáng trước khi tắt
-      brightness = 0;
-      analogWrite(LED_PIN, 0);
-      ledState = false;
-      Serial.println("[SCHEDULE] Tự động tắt đèn (6h-18h)");
-      publishLedStatusIfNeeded();
-      displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag); // Cập nhật OLED ngay
+  if (ntpSynced) {
+    if (lastManualTime == 0) {
+      // First boot: bật/tắt đèn ngay theo giờ hiện tại, không cần đợi 60 phút
+      if (isEveningPeriod() && !ledState) {
+        brightness = (lastBrightness > 0) ? lastBrightness : 100;
+        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
+        ledState = true;
+        Serial.println("[SCHEDULE] First boot: bat den (18h-6h)");
+        publishLedStatusIfNeeded();
+        displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag);
+      } else if (isMorningOffPeriod() && ledState) {
+        lastBrightness = brightness;
+        brightness = 0;
+        analogWrite(LED_PIN, 0);
+        ledState = false;
+        Serial.println("[SCHEDULE] First boot: tat den (6h-18h)");
+        publishLedStatusIfNeeded();
+        displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag);
+      }
+    } else if (elapsed >= MANUAL_WINDOW) {
+      // Đã hết 60 phút không thao tác tay: chạy schedule bình thường
+      if (isEveningPeriod() && !ledState) {
+        brightness = (lastBrightness > 0) ? lastBrightness : 100;
+        analogWrite(LED_PIN, map(brightness, 0, 100, 0, 255));
+        ledState = true;
+        Serial.println("[SCHEDULE] Tu dong bat den (18h-6h)");
+        publishLedStatusIfNeeded();
+        displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag);
+      } else if (isMorningOffPeriod() && ledState) {
+        lastBrightness = brightness;
+        brightness = 0;
+        analogWrite(LED_PIN, 0);
+        ledState = false;
+        Serial.println("[SCHEDULE] Tu dong tat den (6h-18h)");
+        publishLedStatusIfNeeded();
+        displayOLED(tempHighFlag, tempLowFlag, humiHighFlag, humiLowFlag);
+      }
     }
   }
 
