@@ -60,6 +60,7 @@
 \usepackage{seqsplit}
 \usepackage{multirow}
 \usepackage{graphicx}
+% Tất cả ảnh (logo, hình kết quả) đặt trong thư mục \file{images/} --- giống cấu trúc Overleaf chuẩn.
 \graphicspath{{./images/}}
 % Cấu hình bảng mặc định
 \newcolumntype{C}[1]{>{\centering\arraybackslash}m{#1}}
@@ -212,7 +213,14 @@
 \newcommand{\codebreak}[1]{\texttt{\seqsplit{#1}}}
 % Logo trường: không dùng \urldef trong \href (dễ TeX capacity exceeded). URL gõ \% và \_ để an toàn với LaTeX.
 \newcommand{\HueLogoURL}{https://upload.wikimedia.org/wikipedia/vi/thumb/3/33/Logo\_Tr\%C6\%B0\%E1\%BB\%9Dng\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Khoa\_h\%E1\%BB\%8Dc\%2C\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Hu\%E1\%BA\%BF.svg/250px-Logo\_Tr\%C6\%B0\%E1\%BB\%9Dng\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Khoa\_h\%E1\%BB\%8Dc\%2C\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Hu\%E1\%BA\%BF.svg.png}
-\newcommand{\HueLogoFile}{logo_hueuni.png} % cùng thư mục với .tex (Overleaf: upload logo_hueuni.png vào gốc project)
+\newcommand{\HueLogoFile}{logo_hueuni.png} % trong \file{images/} (Overleaf: tạo thư mục \file{images}, upload logo vào đó)
+% Ảnh minh họa mục kết quả — cùng \file{images/} với logo
+\newcommand{\FigSchA}{11_A.jpg}
+\newcommand{\FigSchB}{11_B.jpg}
+\newcommand{\FigSerial}{22.jpg}
+\newcommand{\FigOled}{33.jpg}
+\newcommand{\FigNodeRed}{44.png}
+\newcommand{\FigDashboard}{55.png}
 % =============================================================================
 % ========================  NỘI DUNG TÀI LIỆU  ================================
 % =============================================================================
@@ -454,34 +462,39 @@ Node-RED nhận message từ MQTT, parse JSON và phân luồng xử lý.
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
         font=\scriptsize,
-        >=Latex,
-        mqttn/.style={draw=black!55, rounded corners=2pt, fill=green!14, inner sep=6pt, align=center, minimum width=2.9cm},
-        fn/.style={draw=black!55, rounded corners=2pt, fill=yellow!12, inner sep=5pt, align=center, text width=2.15cm},
-        uin/.style={draw=black!55, rounded corners=2pt, fill=blue!9, inner sep=5pt, align=center, text width=2.35cm},
+        >=Latex[length=2.4mm,width=1.7mm],
+        flowarrow/.style={-{Latex[length=2.4mm,width=1.7mm]}, semithick, draw=black!50, shorten >=0.6pt, shorten <=0.6pt},
+        mqttn/.style={draw=black!42, line width=0.48pt, rounded corners=4pt, fill=green!10, inner sep=7pt, align=center, minimum width=3.15cm},
+        fn/.style={draw=black!38, line width=0.45pt, rounded corners=4pt, fill=yellow!14, inner sep=6pt, align=center, text width=2.32cm, minimum height=0.95cm},
+        uin/.style={draw=black!38, line width=0.45pt, rounded corners=4pt, fill=blue!10, inner sep=6pt, align=center, text width=2.5cm, minimum height=0.9cm},
     ]
+        % --- Tọa độ cột (đủ rộng để 4 nhánh không chen) ---
+        \def\xa{-5.25} \def\xb{-1.72} \def\xc{1.72} \def\xd{5.25}
         \node[mqttn] (m1) {\textbf{mqtt in}\\\texttt{iot/env/data}};
-        \node[fn, text width=8.5cm, minimum height=1.1cm] (hd) at (0,-2.1) {\textbf{HandleData} (function)\\[2pt]parse JSON, tách 4 nhánh song song};
-        \draw[->, thick] (m1) -- (hd);
-        \foreach \x/\lab in {-4.2/temperature, -1.4/humidity, 1.4/alert, 4.2/ledState}
-            \node[fn] (\lab) at (\x,-4.2) {\textbf{\lab}};
-        \coordinate (S) at (0,-2.95);
-        \draw[->, thick] (hd.south) -- (S);
+        \node[fn, text width=10.65cm, minimum height=1.2cm] (hd) at (0,-2.25) {\textbf{HandleData} (function)\\[3pt]parse JSON, tách 4 nhánh song song};
+        \draw[flowarrow] (m1) -- (hd);
+        \foreach \x/\lab in {-5.25/temperature, -1.72/humidity, 1.72/alert, 5.25/ledState}
+            \node[fn] (\lab) at (\x,-4.65) {\textbf{\lab}};
+        \coordinate (S) at (0,-3.12);
+        \draw[flowarrow] (hd.south) -- (S);
+        % Đường phân nhánh ngang mảnh (bus) — vẽ trước, mũi tên tới cột vẽ sau
+        \begin{scope}[opacity=0.55]
+            \draw[draw=black!28, line width=0.75pt, line cap=round] (-5.8,-3.12) -- (5.8,-3.12);
+        \end{scope}
         \foreach \lab in {temperature, humidity, alert, ledState}
-            \draw[->, thick] (S) |- (\lab.north);
-        \node[fn] (tf) at (-4.2,-6.1) {temperature\\function};
-        \node[fn] (hf) at (-1.4,-6.1) {humidity\\function};
-        \node[fn] (af) at (1.4,-6.1) {alert\\function};
-        \node[fn] (lf) at (4.2,-6.1) {ledState\\function};
+            \draw[flowarrow] (S) |- (\lab.north);
+        \node[fn] (tf) at (\xa,-6.45) {temperature\\function};
+        \node[fn] (hf) at (\xb,-6.45) {humidity\\function};
+        \node[fn] (af) at (\xc,-6.45) {alert\\function};
+        \node[fn] (lf) at (\xd,-6.45) {ledState\\function};
         \foreach \a/\b in {temperature/tf, humidity/hf, alert/af, ledState/lf}
-            \draw[->, thick] (\a) -- (\b);
-        \node[uin] (u1) at (-4.2,-8.2) {\textbf{ui\_gauge}\\\textbf{ui\_chart}};
-        \node[uin] (u2) at (-1.4,-8.2) {\textbf{ui\_gauge}\\\textbf{ui\_chart}};
-        \node[uin] (u3) at (1.4,-8.2) {\textbf{ui\_toast}};
-        \node[uin] (u4) at (4.2,-8.2) {\textbf{ui\_switch}};
-        \draw[->, thick] (tf) -- (u1);
-        \draw[->, thick] (hf) -- (u2);
-        \draw[->, thick] (af) -- (u3);
-        \draw[->, thick] (lf) -- (u4);
+            \draw[flowarrow] (\a) -- (\b);
+        \node[uin] (u1) at (\xa,-8.65) {\textbf{ui\_gauge}\\\textbf{ui\_chart}};
+        \node[uin] (u2) at (\xb,-8.65) {\textbf{ui\_gauge}\\\textbf{ui\_chart}};
+        \node[uin] (u3) at (\xc,-8.65) {\textbf{ui\_toast}};
+        \node[uin] (u4) at (\xd,-8.65) {\textbf{ui\_switch}};
+        \foreach \a/\b in {tf/u1, hf/u2, af/u3, lf/u4}
+            \draw[flowarrow] (\a) -- (\b);
     \end{tikzpicture}%
     }
     \caption{Luồng MQTT chính trong Node-RED}
@@ -1375,19 +1388,63 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
 \label{sec:ketqua}
 \index{ketqua}
 
-\textbf{(TODO: Chèn ảnh chụp màn hình tại các vị trí TODO, đặt chú thích ngắn bên dưới mỗi ảnh.)}
-
 % -----------------------------------------------------------------------------
 \subsection{Các hình ảnh minh họa}
 \label{sec:hinh}
 \index{hinh}
 
 \begin{enumerate}[label=\arabic*., leftmargin=1.5cm]
-    \item \textbf{(TODO: chèn ảnh mạch thật)} --- Sơ đồ mạch thật: GPIO0$\rightarrow$DHT11, GPIO12$\rightarrow$LED+R330, GPIO4/5$\rightarrow$OLED, 3V3+GND.
-    \item \textbf{(TODO: chèn ảnh Serial Monitor)} --- Log nhiệt độ, độ ẩm, MQTT, LED, NTP: Firmware đang chạy, publish JSON, nhận lệnh, schedule.
-    \item \textbf{(TODO: chèn ảnh OLED)} --- Màn hình OLED SH1106: Hiển thị T, H, trạng thái đèn, ngưỡng.
-    \item \textbf{(TODO: chèn ảnh Node-RED flow)} --- Tab MQTT với các node \& kết nối: mqtt in $\rightarrow$ HandleData $\rightarrow$ 4 nhánh $\rightarrow$ Dashboard + LED Status Listener.
-    \item \textbf{(TODO: chèn ảnh Dashboard)} --- Trang Chủ: Gauge, Chart, Switch, Slider --- Giao diện giám sát \& điều khiển trên trình duyệt.
+    \item \textbf{Sơ đồ nguyên lý và mạch thật.} Kết nối theo firmware: DHT11 (DATA$\rightarrow$GPIO0 / D3), LED+R330 ($\rightarrow$GPIO12 / D6), OLED SH1106 I$^2$C (SCL$\rightarrow$GPIO4 / D2, SDA$\rightarrow$GPIO5 / D1), 3V3 \& GND.
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.92\textwidth]{\FigSchA}
+        \caption{Sơ đồ nguyên lý (EasyEDA): NodeMCU ESP8266, DHT11, OLED SH1106, LED qua điện trở.}
+        \label{fig:res-sch}
+    \end{figure}
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.92\textwidth]{\FigSchB}
+        \caption{Ảnh mạch thật đã lắp ráp (mặt linh kiện / PCB).}
+        \label{fig:res-pcb}
+    \end{figure}
+
+    \item \textbf{Serial Monitor.} Log nhiệt độ, độ ẩm, cảnh báo ngưỡng; có thể có MQTT, LED, NTP, schedule khi firmware chạy ổn định.
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.92\textwidth]{\FigSerial}
+        \caption{Serial Monitor (Arduino IDE / VS Code): log runtime từ ESP8266.}
+        \label{fig:res-serial}
+    \end{figure}
+
+    \item \textbf{OLED SH1106.} Hiển thị nhiệt độ, độ ẩm, trạng thái đèn, ngưỡng/cảnh báo cục bộ.
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.55\textwidth]{\FigOled}
+        \caption{Màn hình OLED SH1106 trên mạch thật.}
+        \label{fig:res-oled}
+    \end{figure}
+
+    \item \textbf{Node-RED flow.} Tab MQTT: \texttt{mqtt in} $\rightarrow$ \texttt{HandleData} $\rightarrow$ bốn nhánh $\rightarrow$ Dashboard; khu vực đồng bộ LED / \texttt{LED Status Listener}.
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.92\textwidth]{\FigNodeRed}
+        \caption{Giao diện editor Node-RED: luồng xử lý \& điều khiển LED.}
+        \label{fig:res-nr}
+    \end{figure}
+
+    \item \textbf{Node-RED Dashboard.} Trang Chủ: gauge nhiệt độ/độ ẩm, biểu đồ, slider độ sáng, switch bật/tắt đèn.
+
+    \begin{figure}[htbp]
+        \centering
+        \includegraphics[width=0.92\textwidth]{\FigDashboard}
+        \caption{Dashboard trên trình duyệt: giám sát \& điều khiển.}
+        \label{fig:res-dash}
+    \end{figure}
 \end{enumerate}
 
 % -----------------------------------------------------------------------------
@@ -1544,7 +1601,7 @@ const char *mqtt_pass   = "****";
 
 \textbf{Không có mã nguồn web HTML/JS/CSS riêng} --- giao diện Dashboard hoàn toàn do \textbf{node-red-dashboard} sinh ra từ flow JSON.
 
-\textbf{(TODO: Chèn ảnh chụp Node-RED editor và Dashboard tại đây.)}
+Ảnh chụp editor Node-RED và Dashboard: xem Hình~\ref{fig:res-nr} và Hình~\ref{fig:res-dash} (mục \textbf{Kết quả thực hiện}).
 
 % =============================================================================
 % TÀI LIỆU THAM KHẢO
