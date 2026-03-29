@@ -1,7 +1,7 @@
 % =============================================================================
 %  BÁO CÁO BÀI TẬP LỚN
 %  Hệ thống giám sát môi trường và điều khiển thiết bị qua giao thức MQTT
-%  (ESP8266 + DHT11 + OLED SH1106 + Node-RED Dashboard)
+%  (ESP8266 + DHT11 + OLED (SH1106) + Node-RED Dashboard)
 % =============================================================================
 \documentclass[13pt,a4paper]{article}
 % -----------------------------------------------------------------------------
@@ -246,7 +246,7 @@
     CỦA KHU VỰC VÀ ĐIỀU KHIỂN TẮT BẬT ĐÈN\\
     \vspace{0.35cm}
     \fontsize{14}{18}\selectfont
-    (ESP8266 + DHT11 + OLED SH1106 + Node-RED Dashboard)\\
+    (ESP8266 + DHT11 + OLED (SH1106) + Node-RED Dashboard)\\
 \end{center}
 
 \vspace{1.1cm}
@@ -282,6 +282,85 @@
 }
 \newpage
 % =============================================================================
+% LỜI CẢM ƠN
+% =============================================================================
+\thispagestyle{empty}
+\vspace*{0.4cm}
+\begin{center}
+    \fontsize{19}{24}\selectfont\bfseries\LOTO{CẢM ƠN}\par
+    \vspace{0.25ex}
+    \rule{0.30\textwidth}{1.8pt}
+\end{center}
+\vspace{0.85cm}
+
+\phantomsection
+\addcontentsline{toc}{section}{LỜI CẢM ƠN}
+
+\parindent=1.1cm
+\setlength{\parskip}{0.6ex plus 0.2ex}
+Trước hết, nhóm sinh viên xin gửi lời cảm ơn chân thành đến \textbf{GV Lê Hữu Bình} --- giảng viên hướng dẫn môn \textit{Phát triển ứng dụng IoT} --- đã tận tình giảng dạy, cung cấp kiến thức nền tảng về IoT, MQTT, Node-RED, và hướng dẫn chi tiết trong suốt quá trình thực hiện đề tài. Những góp ý của thầy đã giúp nhóm hoàn thiện thiết kế hệ thống từ phần cứng đến phần mềm.
+
+Xin cảm ơn \textbf{Khoa Công nghệ thông tin, Trường ĐH Khoa học Huế} đã tạo điều kiện về phòng thí nghiệm, thiết bị và môi trường học tập để nhóm hoàn thành dự án.
+
+Xin cảm ơn các bạn trong lớp đã trao đổi kinh nghiệm, chia sẻ tài liệu tham khảo và động viên trong quá trình thực hiện.
+
+Cuối cùng, xin gửi lời cảm ơn đến gia đình và bạn bè --- những người đã luôn ủng hộ, động viên để nhóm có đủ nghị lực hoàn thành đề tài đúng tiến độ.
+
+\parindent=0pt
+\parskip=0pt
+\vspace{0.8cm}
+\hfill\begin{minipage}[t]{7cm}
+    \fontsize{12}{15}\selectfont
+    \begin{flushright}
+        \textbf{Nhóm sinh viên thực hiện}\\
+        Nhóm 6 --- Lớp TIN4024.009\\
+        Phan Bá Đủ, Nguyễn Thị Huyền,\\
+        Nguyễn Hữu Việt\\[0.5em]
+        Huế, tháng 03 năm 2026
+    \end{flushright}
+\end{minipage}
+
+\newpage
+% =============================================================================
+% DANH MỤC TỪ VIẾT TẮT
+% =============================================================================
+\thispagestyle{empty}
+\vspace*{0.4cm}
+\begin{center}
+    \fontsize{19}{24}\selectfont\bfseries\LOTO{DANH MỤC TỪ VIẾT TẮT}\par
+    \vspace{0.25ex}
+    \rule{0.45\textwidth}{1.8pt}
+\end{center}
+\vspace{0.65cm}
+
+\phantomsection
+\addcontentsline{toc}{section}{DANH MỤC TỪ VIẾT TẮT}
+
+\noindent
+\begin{longtable}[l]{@{}p{3.0cm}p{4.4cm}p{7.4cm}@{}}
+    \toprule
+    \centering\textbf{Ký hiệu} & \centering\textbf{Tiếng Anh} & \centering\textbf{Tiếng Việt} \\
+    \midrule\endhead
+    \bottomrule\endfoot
+    \textbf{API}   & Application Programming Interface   & Giao diện lập trình ứng dụng \\[0.3ex]
+    \textbf{DHT}   & Digital Humidity and Temperature   & Cảm biến nhiệt độ \& độ ẩm số \\[0.3ex]
+    \textbf{GPIO}  & General Purpose Input/Output       & Chân vào/ra đa mục đích \\[0.3ex]
+    \textbf{HTTP}  & HyperText Transfer Protocol       & Giao thức truyền siêu văn bản \\[0.3ex]
+    \textbf{I$^2$C} & Inter-Integrated Circuit          & Giao thức truyền thông hai dây \\[0.3ex]
+    \textbf{JSON}  & JavaScript Object Notation        & Ký hiệu đối tượng JavaScript --- định dạng chuỗi dữ liệu \\[0.3ex]
+    \textbf{LED}   & Light-Emitting Diode               & Điốt phát quang \\[0.3ex]
+    \textbf{MQTT}  & Message Queuing Telemetry Transport & Giao thức truyền thông điệp theo mô hình pub/sub \\[0.3ex]
+    \textbf{NRD}   & Node-RED Dashboard                 & Giao diện dashboard của Node-RED \\[0.3ex]
+    \textbf{NTP}   & Network Time Protocol               & Giao thức đồng bộ thời gian qua mạng \\[0.3ex]
+    \textbf{OLED}  & Organic Light-Emitting Diode        & Màn hình diod phát quang hữu cơ \\[0.3ex]
+    \textbf{PWM}   & Pulse Width Modulation              & Điều chế độ rộng xung \\[0.3ex]
+    \textbf{SDK}   & Software Development Kit            & Bộ công cụ phát triển phần mềm \\[0.3ex]
+    \textbf{TLS}   & Transport Layer Security            & Giao thức bảo mật tầng truyền tải \\[0.3ex]
+    \textbf{URL}   & Uniform Resource Locator           & Bộ định vị tài nguyên thống nhất
+\end{longtable}
+
+\newpage
+% =============================================================================
 % 1. ĐẶT VẤN ĐỀ
 % =============================================================================
 \pagenumbering{arabic}
@@ -295,9 +374,9 @@ Internet of Things (IoT) là xu hướng kết nối các thiết bị vật lý
 Đề tài xây dựng một hệ thống IoT hoàn chỉnh gồm ba thành phần chính:
 
 \begin{itemize}
-    \item \textbf{Thiết bị đầu cuối (Edge):} Vi điều khiển \textbf{ESP8266 (Wemos D1 Mini)} kết nối với \textbf{cảm biến DHT11} (nhiệt độ \& độ ẩm), \textbf{LED} có điều khiển PWM, và \textbf{màn hình OLED SH1106 128x64} hiển thị thông tin cục bộ.
+    \item \textbf{Thiết bị đầu cuối (Edge):} Vi điều khiển \textbf{ESP8266 (Wemos D1 Mini)} kết nối với \textbf{cảm biến DHT11} (nhiệt độ \& độ ẩm), \textbf{LED} có điều khiển PWM, và \textbf{màn hình OLED (SH1106) 128x64} hiển thị thông tin cục bộ.
     \item \textbf{Tầng trung gian (Middleware):} \textbf{MQTT Broker} \textbf{HiveMQ Cloud} (TLS, port 8883) làm trung tâm truyền tin giữa thiết bị và giao diện.
-    \item \textbf{Tầng ứng dụng (Application):} \textbf{Node-RED Dashboard} cung cấp giao diện giám sát trực quan (gauge, biểu đồ), cảnh báo (toast notification), điều khiển đèn (switch, slider), và đồng bộ trạng thái hai chiều hoàn toàn qua trình duyệt.
+    \item \textbf{Tầng ứng dụng (Application):} \textbf{NRD} (Node-RED Dashboard) cung cấp giao diện giám sát trực quan (gauge, biểu đồ), cảnh báo (toast notification), điều khiển đèn (switch, slider), và đồng bộ trạng thái hai chiều hoàn toàn qua trình duyệt.
 \end{itemize}
 
 \begin{mdframed}[backgroundcolor=yellow!20, linecolor=yellow!60]
@@ -360,17 +439,17 @@ Hệ thống thực hiện đầy đủ chín nội dung chính theo yêu cầu 
 \end{enumerate}
 
 % -----------------------------------------------------------------------------
-\subsection{Hiển thị OLED SH1106}
+\subsection{Hiển thị OLED (SH1106)}
 \label{sec:oled}
 \index{hienthioled}
 
-Màn hình \textbf{OLED SH1106 128x64 I2C} hiển thị thông tin cục bộ ngay trên thiết bị, giúp người dùng quan sát nhanh mà không cần mở Dashboard.
+Màn hình \textbf{OLED (SH1106) 128x64 I2C} hiển thị thông tin cục bộ ngay trên thiết bị, giúp người dùng quan sát nhanh mà không cần mở Dashboard.
 
 \textbf{Thông số kỹ thuật:}
 
 \begin{table}[htbp]
     \centering
-    \caption{Thông số kỹ thuật OLED SH1106}
+    \caption{Thông số kỹ thuật OLED (SH1106)}
     \label{tbl:oled}
     \begin{tabular}{|L{4cm}|C{5cm}|}
         \hline
@@ -393,7 +472,7 @@ Màn hình \textbf{OLED SH1106 128x64 I2C} hiển thị thông tin cục bộ ng
 
 \begin{table}[htbp]
     \centering
-    \caption{Bố cục hiển thị OLED SH1106}
+    \caption{Bố cục hiển thị OLED (SH1106)}
     \label{tbl:oledlayout}
     \begin{tabular}{|C{2cm}|C{5cm}|C{5cm}|}
         \hline
@@ -625,7 +704,7 @@ Node-RED nhận message từ MQTT, parse JSON và phân luồng xử lý.
 \label{sec:dashboard}
 \index{hienthidulieu}
 
-\textbf{Giao diện Node-RED Dashboard} (tab \textbf{Trang Chủ}, nhóm \textbf{Nhiệt Độ}, \textbf{Độ Ẩm}, \textbf{Đèn}):
+\textbf{Giao diện NRD} (tab \textbf{Trang Chủ}, nhóm \textbf{Nhiệt Độ}, \textbf{Độ Ẩm}, \textbf{Đèn}):
 
 \begin{table}[htbp]
     \centering
@@ -832,7 +911,7 @@ Hệ thống được lắp mạch thật theo sơ đồ dưới đây. Không s
         \hline
         2 & \textbf{Cảm biến DHT11} & Đo nhiệt độ (0--50$^\circ$C, $\pm2^\circ$C) và độ ẩm (20--90\% RH, $\pm5\%$ RH) \\
         \hline
-        3 & \textbf{OLED SH1106 128x64 I2C} & Màn hình hiển thị thông tin cục bộ \\
+        3 & \textbf{OLED (SH1106) 128x64 I2C} & Màn hình hiển thị thông tin cục bộ \\
         \hline
         4 & \textbf{LED đơn (màu đỏ)} & Hiển thị trạng thái / thí nghiệm PWM \\
         \hline
@@ -890,7 +969,7 @@ Hệ thống được lắp mạch thật theo sơ đồ dưới đây. Không s
 
 \textbf{1) ESP8266 (Wemos D1 Mini)}
 
-Vi điều khiển single-core Tensilica LX106, tích hợp Wi-Fi 802.11 b/g/n. Trong project này, ESP8266 đảm nhiệm: kết nối Wi-Fi, giao tiếp MQTT qua TLS, đọc cảm biến DHT11, điều khiển PWM LED thông qua \code{analogWrite()} (không dùng LEDC như ESP32), giao tiếp I2C với OLED SH1106, và đồng bộ thời gian NTP.
+Vi điều khiển single-core Tensilica LX106, tích hợp Wi-Fi 802.11 b/g/n. Trong project này, ESP8266 đảm nhiệm: kết nối Wi-Fi, giao tiếp MQTT qua TLS, đọc cảm biến DHT11, điều khiển PWM LED thông qua \code{analogWrite()} (không dùng LEDC như ESP32), giao tiếp I2C với OLED (SH1106), và đồng bộ thời gian NTP.
 
 \textbf{2) Cảm biến DHT11}
 
@@ -919,7 +998,7 @@ Vi điều khiển single-core Tensilica LX106, tích hợp Wi-Fi 802.11 b/g/n. 
 
 DHT11 trả dữ liệu theo định dạng số 40-bit: 16 bit cho độ ẩm, 16 bit cho nhiệt độ, 8 bit checksum. Thư viện \code{DHT.h} trong Arduino IDE đã lo phần giải mã.
 
-\textbf{3) OLED SH1106 128x64 I2C}
+\textbf{3) OLED (SH1106) 128x64 I2C}
 
 Màn hình OLED đơn sắc giao tiếp qua I2C, không có chân reset (dùng \code{U8X8\_PIN\_NONE}). Thư viện \code{U8G2lib} cung cấp API vẽ chuỗi, hỗ trợ nhiều font. Địa chỉ I2C mặc định của SH1106 là \code{0x3C}.
 
@@ -959,7 +1038,7 @@ LED đỏ có điện áp hoạt động khoảng 1.8--2.2V và dòng tối đa 
             MQTT / hiển thị: \texttt{PubSubClient},\ \texttt{U8g2}\\[3pt]
             Luồng chính: \texttt{publishEnvData},\ \texttt{mqttCallback},\ \texttt{displayOLED}\\[3pt]
             LED (PWM): \texttt{analogWrite} $\rightarrow$ GPIO12 (D6)};
-        \node[peripheral, right=5mm of esp] (oled) {\textbf{OLED SH1106}\\[3pt]\scriptsize Bus I$^2$C \texttt{0x3C}\\[2pt]SCL: GPIO4\\SDA: GPIO5};
+        \node[peripheral, right=5mm of esp] (oled) {\textbf{OLED (SH1106)}\\[3pt]\scriptsize Bus I$^2$C \texttt{0x3C}\\[2pt]SCL: GPIO4\\SDA: GPIO5};
         \draw[->, thick] (dht.east) -- (esp.west)
             node[midway, below=3.5mm, arrlab] {GPIO0};
         \draw[->, thick] (oled.west) -- (esp.east)
@@ -1001,7 +1080,7 @@ LED đỏ có điện áp hoạt động khoảng 1.8--2.2V và dòng tối đa 
 
 \textbf{Bước 6 -- Tách luồng:} HandleData trả 4 bản sao msg, mỗi bản qua function chuyên biệt $\rightarrow$ gauge, chart, toast, switch.
 
-\textbf{Bước 7 -- Hiển thị:} Dashboard cập nhật gauge, biểu đồ tự động vẽ điểm mới theo thời gian. Đồng thời OLED SH1106 cũng được cập nhật.
+\textbf{Bước 7 -- Hiển thị:} Dashboard cập nhật gauge, biểu đồ tự động vẽ điểm mới theo thời gian. Đồng thời OLED (SH1106) cũng được cập nhật.
 
 % -----------------------------------------------------------------------------
 \subsection{Luồng điều khiển: Dashboard $\rightarrow$ ESP8266 $\rightarrow$ LED}
@@ -1378,7 +1457,7 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
     \item Thử kéo \textbf{Slider} độ sáng $\rightarrow$ LED trên mạch thay đổi độ sáng.
     \item Thử gạt \textbf{Switch} $\rightarrow$ LED bật/tắt hoàn toàn.
     \item Thử tạo nhiệt độ cao ($>38^\circ$C) hoặc thấp ($<18^\circ$C) $\rightarrow$ \textbf{Toast cảnh báo} xuất hiện.
-    \item Quan sát \textbf{OLED SH1106} hiển thị thông tin cục bộ cùng lúc.
+    \item Quan sát \textbf{OLED (SH1106)} hiển thị thông tin cục bộ cùng lúc.
 \end{enumerate}
 
 % =============================================================================
@@ -1394,12 +1473,12 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
 \index{hinh}
 
 \begin{enumerate}[label=\arabic*., leftmargin=1.5cm]
-    \item \textbf{Sơ đồ nguyên lý và mạch thật.} Kết nối theo firmware: DHT11 (DATA$\rightarrow$GPIO0 / D3), LED+R330 ($\rightarrow$GPIO12 / D6), OLED SH1106 I$^2$C (SCL$\rightarrow$GPIO4 / D2, SDA$\rightarrow$GPIO5 / D1), 3V3 \& GND.
+    \item \textbf{Sơ đồ nguyên lý và mạch thật.} Kết nối theo firmware: DHT11 (DATA$\rightarrow$GPIO0 / D3), LED+R330 ($\rightarrow$GPIO12 / D6), OLED (SH1106) I$^2$C (SCL$\rightarrow$GPIO4 / D2, SDA$\rightarrow$GPIO5 / D1), 3V3 \& GND.
 
     \begin{figure}[htbp]
         \centering
         \includegraphics[width=0.92\textwidth]{\FigSchA}
-        \caption{Sơ đồ nguyên lý (EasyEDA): NodeMCU ESP8266, DHT11, OLED SH1106, LED qua điện trở.}
+        \caption{Sơ đồ nguyên lý (EasyEDA): NodeMCU ESP8266, DHT11, OLED (SH1106), LED qua điện trở.}
         \label{fig:res-sch}
     \end{figure}
 
@@ -1419,12 +1498,12 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
         \label{fig:res-serial}
     \end{figure}
 
-    \item \textbf{OLED SH1106.} Hiển thị nhiệt độ, độ ẩm, trạng thái đèn, ngưỡng/cảnh báo cục bộ.
+    \item \textbf{OLED (SH1106).} Hiển thị nhiệt độ, độ ẩm, trạng thái đèn, ngưỡng/cảnh báo cục bộ.
 
     \begin{figure}[htbp]
         \centering
         \includegraphics[width=0.55\textwidth]{\FigOled}
-        \caption{Màn hình OLED SH1106 trên mạch thật.}
+        \caption{Màn hình OLED (SH1106) trên mạch thật.}
         \label{fig:res-oled}
     \end{figure}
 
@@ -1437,7 +1516,7 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
         \label{fig:res-nr}
     \end{figure}
 
-    \item \textbf{Node-RED Dashboard.} Trang Chủ: gauge nhiệt độ/độ ẩm, biểu đồ, slider độ sáng, switch bật/tắt đèn.
+    \item \textbf{NRD.} Trang Chủ: gauge nhiệt độ/độ ẩm, biểu đồ, slider độ sáng, switch bật/tắt đèn.
 
     \begin{figure}[htbp]
         \centering
@@ -1515,7 +1594,7 @@ Hệ thống IoT hoàn chỉnh gồm ba tầng đã được triển khai và ki
     \item \textbf{Thu thập dữ liệu môi trường} --- ESP8266 đọc DHT11 định kỳ 20 giây, xử lý 4 ngưỡng (cao/thấp nhiệt độ \& độ ẩm), đóng gói JSON chứa nhiệt độ, độ ẩm, 4 cờ cảnh báo và thông điệp.
     \item \textbf{Hiển thị OLED cục bộ} --- Màn hình SH1106 128x64 I2C hiển thị nhiệt độ, độ ẩm, trạng thái đèn và ngưỡng/cảnh báo ngay trên thiết bị.
     \item \textbf{Truyền dữ liệu qua MQTT} --- HiveMQ Cloud (TLS 8883), ESP8266 vừa là publisher (telemetry + LED status) vừa là subscriber (điều khiển LED). Tự động reconnect Wi-Fi, MQTT và đồng bộ NTP định kỳ.
-    \item \textbf{Xử lý và hiển thị} --- Node-RED Dashboard với gauge nhiệt độ/độ ẩm, biểu đồ thời gian thực, toast cảnh báo khi vượt ngưỡng.
+    \item \textbf{Xử lý và hiển thị} --- NRD với gauge nhiệt độ/độ ẩm, biểu đồ thời gian thực, toast cảnh báo khi vượt ngưỡng.
     \item \textbf{Điều khiển thiết bị} --- Switch bật/tắt + Slider 0--100\% độ sáng LED qua PWM (\code{analogWrite}, 8-bit). Firmware xử lý 3 dạng payload tương thích nhiều nguồn điều khiển.
     \item \textbf{Đồng bộ hai chiều} --- ESP8266 publish \code{iot/led/status} sau mỗi thay đổi LED (kể cả tự động theo giờ), Node-RED đồng bộ slider và switch về đúng trạng thái thực.
     \item \textbf{Tự động theo giờ} --- Chế độ tự động bật đèn 18h--6h, tắt đèn 6h--18h dựa trên NTP. Chế độ thủ công 60 phút cho phép người dùng tạm quên schedule khi cần.
@@ -1546,7 +1625,7 @@ Hệ thống IoT hoàn chỉnh gồm ba tầng đã được triển khai và ki
     \hline
     \textbf{Mở rộng phần cứng} & Chưa có relay (điều khiển thiết bị 220V), chưa có cảm biến khác (ánh sáng, khí gas…). & Chỉ bổ sung khi có phần cứng thật. \\
     \hline
-    \textbf{Xác thực Dashboard} & Node-RED Dashboard mặc định không có login. & Bật \code{adminAuth} trong \code{settings.js}. \\
+    \textbf{Xác thực NRD} & NRD mặc định không có login. & Bật \code{adminAuth} trong \code{settings.js}. \\
     \hline
     \textbf{OTA Update} & Chưa triển khai cập nhật firmware từ xa qua Wi-Fi. & Có thể dùng \code{ESPhttpUpdate} hoặc \code{ArduinoOTA}. \\
     \hline
@@ -1564,20 +1643,28 @@ Hệ thống IoT hoàn chỉnh gồm ba tầng đã được triển khai và ki
 \label{sec:code}
 \index{manguon}
 
-\textbf{File nguồn:} \file{iot-nhom6/iot-nhom6.ino} trong thư mục project.
+\textbf{File gốc (có chú thích):} \file{iot-nhom6/iot-nhom6.ino}.\\
+\textbf{Bản dưới đây:} toàn bộ mã đã \textbf{gỡ chú thích} (\texttt{//} và \texttt{/* */}) để phụ lục gọn; sinh tự động từ file gốc bằng \file{tools/strip\_ino\_comments.py} $\rightarrow$ \file{appendix-iot-nhom6-nocomment.ino}.
 
-Toàn bộ firmware nằm trong một file \file{.ino} duy nhất, bao gồm: định nghĩa chân GPIO, cấu hình Wi-Fi, MQTT, NTP, các hàm xử lý (callback, OLED, DHT, LED PWM, schedule), và chương trình chính (\code{setup()}, \code{loop()}).
+Nội dung gồm: chân GPIO, Wi-Fi, MQTT, NTP, callback, OLED, DHT, LED PWM, lịch tự động, \code{setup()}/\code{loop()}.
 
-Khi nộp báo cáo, thay thế các dòng chứa thông tin nhạy cảm bằng \code{****}:
+\begin{mdframed}[backgroundcolor=yellow!15, linecolor=yellow!55]
+    \textbf{Lưu ý khi nộp/công bố:} Trong mã có thể còn SSID, mật khẩu Wi-Fi, MQTT --- nên thay bằng \code{****} trong bản nộp công khai (hoặc chỉ nộp bản đã che).
+\end{mdframed}
 
-\begin{lstlisting}[style=cppcode, caption={Thông tin bảo mật cần thay}, label={lst:security}]
-const char *ssid     = "****";
-const char *password = "****";
-const char *mqtt_user   = "****";
-const char *mqtt_pass   = "****";
-\end{lstlisting}
-
-\textbf{(TODO: Chèn toàn bộ mã nguồn iot-nhom6.ino tại đây hoặc tham chiếu đến file trong thư mục project.)}
+\IfFileExists{appendix-iot-nhom6-nocomment.ino}{%
+  \lstinputlisting[
+    style=appendixcode,
+    caption={Firmware ESP8266 (đã gỡ chú thích, 487 dòng)},
+    label={lst:appendix-arduino}
+  ]{appendix-iot-nhom6-nocomment.ino}%
+}{%
+  \begin{mdframed}[backgroundcolor=yellow!20, linecolor=yellow!60]
+    \textbf{Lỗi:} Không tìm thấy \file{appendix-iot-nhom6-nocomment.ino}. Chạy lệnh sau để tạo file (yêu cầu Python 3):\\[0.4em]
+    \code{python tools/strip\_ino\_comments.py}\\[0.4em]
+    Sau đó đặt \file{appendix-iot-nhom6-nocomment.ino} cùng thư mục với \file{bao-cao.tex}.
+  \end{mdframed}
+}
 
 % =============================================================================
 % PHỤ LỤC B — Node-RED Flow
@@ -1599,9 +1686,32 @@ const char *mqtt_pass   = "****";
     \textbf{Kiểm tra bảo mật trước khi công bố:} Mở file JSON, tìm node \code{mqtt-broker}, xóa username/password nếu còn dạng plain text, thay bằng \code{****} và cấu hình lại trên máy demo.
 \end{mdframed}
 
-\textbf{Không có mã nguồn web HTML/JS/CSS riêng} --- giao diện Dashboard hoàn toàn do \textbf{node-red-dashboard} sinh ra từ flow JSON.
+\textbf{Không có mã nguồn web HTML/JS/CSS riêng} --- giao diện Dashboard hoàn toàn do \textbf{NRD} sinh ra từ flow JSON.
+
+\textbf{Toàn bộ mã JSON export} (đồng bộ với \file{node-red.json} trong project):
+
+\IfFileExists{node-red.json}{%
+  \lstinputlisting[
+    style=appendixjson,
+    caption={Node-RED --- export flow (JSON, 637 dòng)},
+    label={lst:appendix-nodered}
+  ]{node-red.json}%
+}{%
+  \begin{mdframed}[backgroundcolor=yellow!20, linecolor=yellow!60]
+    \textbf{Lỗi:} Không tìm thấy \file{node-red.json}. Đặt file này cùng thư mục với \file{bao-cao.tex}.
+  \end{mdframed}
+}
 
 Ảnh chụp editor Node-RED và Dashboard: xem Hình~\ref{fig:res-nr} và Hình~\ref{fig:res-dash} (mục \textbf{Kết quả thực hiện}).
+
+% =============================================================================
+% PHỤ LỤC C — KHÁC (NẾU CÓ)
+% =============================================================================
+\section{Các nội dung khác (nếu có)}
+\label{sec:phuluc-c}
+\index{phuluckhac}
+
+Không có phần bổ sung ngoài mã nguồn firmware (Phụ lục A) và JSON Node-RED (Phụ lục B).
 
 % =============================================================================
 % TÀI LIỆU THAM KHẢO
