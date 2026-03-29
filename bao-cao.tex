@@ -11,6 +11,7 @@
 % T5 (tiếng Việt) phải là encoding mặc định — phần tử CUỐI trong danh sách fontenc.
 % [T5,T1] khiến T1 là mặc định → lỗi \UHORN, \OHORN... (Overleaf có thể timeout vì hàng nghìn lỗi).
 \usepackage[T1,T5]{fontenc}
+\usepackage{amsmath} % phải trước newtxmath (không dùng amssymb — trùng \Bbbk với newtxmath)
 % newtxtext + newtxmath = Times New Roman chuẩn, thay thế times + mathptmx (lỗi thời)
 \usepackage{newtxtext}
 \usepackage{newtxmath}
@@ -18,6 +19,10 @@
 % 2. MARGIN & PAGE
 % -----------------------------------------------------------------------------
 \usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\raggedbottom % tránh flushbottom giãn dọc quá đà khi trang ít nội dung
+\setlength{\intextsep}{10pt plus 3pt minus 2pt}
+\setlength{\textfloatsep}{11pt plus 3pt minus 2pt}
+\setlength{\floatsep}{10pt plus 2pt minus 2pt}
 \usepackage{indentfirst}
 \setlength{\parindent}{1cm}
 \usepackage{setspace}
@@ -36,6 +41,15 @@
 \titleformat{\subsubsection}
   {\normalfont\fontsize{13}{17}\selectfont\bfseries\itshape}
   {\thesubsubsection}{0.75em}{}
+% Khoảng cách section (gọn hơn mặc định titlesec)
+\titlespacing*{\section}{0pt}{2ex plus .2ex minus .1ex}{1.35ex plus .15ex}
+\titlespacing*{\subsection}{0pt}{1.65ex plus .15ex}{1.05ex plus .1ex}
+\titlespacing*{\subsubsection}{0pt}{1.35ex plus .1ex}{0.85ex plus .08ex}
+% \tableofcontents gọi \section* — không dùng [block] giống section có số (tránh 2 tiêu đề + khoảng trắng khổng lồ)
+\renewcommand{\contentsname}{MỤC LỤC}
+\titleformat{name=\section,numberless}[block]
+  {\normalfont\fontsize{15}{18}\selectfont\bfseries\centering}{}{0em}{}
+\titlespacing*{name=\section,numberless}{0pt}{0.35\baselineskip}{0.65\baselineskip}
 % -----------------------------------------------------------------------------
 % 4. BẢNG BIỂU
 % -----------------------------------------------------------------------------
@@ -54,10 +68,12 @@
 % Cột co giãn theo \textwidth, căn trái (hostname/URL dài trong bảng)
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 % -----------------------------------------------------------------------------
-% 5. MÃ NGUỒN (xcolor [table] trước listings — \rowcolor + tránh xung đột tùy chọn)
+% 5. MÃ NGUỒN (xcolor [table] trước listings — \rowcolor trong listings; bảng chỉ dùng \textbf cho hàng tiêu đề)
 % -----------------------------------------------------------------------------
 \PassOptionsToPackage{table}{xcolor}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
 \usepackage{listings}
 % Màu sắc
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -138,6 +154,21 @@
     captionpos=b,
     xleftmargin=0pt,
 }
+% Serial / console: nền giống khối mã (cppcode), không tô cú pháp
+\lstdefinestyle{serialog}{
+    backgroundcolor=\color{backcolour},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    frameround=ttt,
+    rulecolor=\color{codegray},
+    numbers=none,
+    tabsize=4,
+    showstringspaces=false,
+    captionpos=b,
+    xleftmargin=10pt,
+    keepspaces=true,
+}
 \lstset{style=flowcode}
 % -----------------------------------------------------------------------------
 % 6. BOX & HIGHLIGHT (chỉ gọi mdframed một lần — tránh lỗi "package in group")
@@ -156,9 +187,12 @@
 % -----------------------------------------------------------------------------
 % 7. CÁC GÓI CÒN LẠI (hyperref phải gần cuối preamble — tránh lỗi trên Overleaf)
 % -----------------------------------------------------------------------------
-\usepackage{amsmath,amssymb}
+\usepackage{pifont} % \ding{51} thay $\checkmark$ (không cần amssymb)
 \usepackage[shortlabels,inline]{enumitem}
-\usepackage{tocbibind}
+\setlist{topsep=0.4em, itemsep=0.22em, parsep=0pt, partopsep=0pt}
+\setlist[enumerate]{topsep=0.45em, itemsep=0.22em}
+\setlist[itemize]{topsep=0.4em, itemsep=0.2em}
+\usepackage[nottoc,notlof,notlot]{tocbibind} % không liệt kê TOC/LoF/LoT trong mục lục (tránh dòng "Contents" thừa)
 \usepackage{fancyhdr}
 \usepackage{xurl}
 \usepackage[unicode,bookmarks=true,hypertexnames=false]{hyperref}
@@ -166,8 +200,8 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[R]{\thepage}
-\fancyfoot[C]{\fontsize{10}{12}\selectfont\thepage}
-\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}}
+% Chỉ hiện số trang một lần (tránh trùng header + footer)
+\fancypagestyle{plain}{\fancyhf{}\fancyhead[R]{\thepage}}
 % -----------------------------------------------------------------------------
 % 8. MISC
 % -----------------------------------------------------------------------------
@@ -176,6 +210,9 @@
 \newcommand{\file}[1]{\textbf{\texttt{#1}}}
 % Chuỗi dài (hostname, v.v.) trong ô bảng: cho phép ngắt dòng, vẫn \texttt
 \newcommand{\codebreak}[1]{\texttt{\seqsplit{#1}}}
+% Logo trường: không dùng \urldef trong \href (dễ TeX capacity exceeded). URL gõ \% và \_ để an toàn với LaTeX.
+\newcommand{\HueLogoURL}{https://upload.wikimedia.org/wikipedia/vi/thumb/3/33/Logo\_Tr\%C6\%B0\%E1\%BB\%9Dng\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Khoa\_h\%E1\%BB\%8Dc\%2C\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Hu\%E1\%BA\%BF.svg/250px-Logo\_Tr\%C6\%B0\%E1\%BB\%9Dng\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Khoa\_h\%E1\%BB\%8Dc\%2C\_\%C4\%90\%E1\%BA\%A1i\_h\%E1\%BB\%8Dc\_Hu\%E1\%BA\%BF.svg.png}
+\newcommand{\HueLogoFile}{logo_hueuni.png} % cùng thư mục với .tex (Overleaf: upload logo_hueuni.png vào gốc project)
 % =============================================================================
 % ========================  NỘI DUNG TÀI LIỆU  ================================
 % =============================================================================
@@ -186,44 +223,43 @@
 \thispagestyle{empty}
 \begin{center}
     \fontsize{18}{22}\selectfont\bfseries
-    TRƯỜNG ĐẠI HỌC BÁCH KHOA TP.HCM\\
+    TRƯỜNG ĐẠI HỌC KHOA HỌC HUẾ\\
+    \vspace{0.45cm}
+    \href{\HueLogoURL}{\includegraphics[width=4.6cm]{\HueLogoFile}}\\
     \vspace{0.5cm}
-    KHOA ĐIỆN - ĐIỆN TỬ\\
-    \vspace{2cm}
 \end{center}
-
-\vspace{1.5cm}
 
 \begin{center}
     \fontsize{20}{24}\selectfont\bfseries
-    BÁO CÁO BÀI TẬP LỚN\\
-    \vspace{0.5cm}
+    KIỂM TRA GIỮA KỲ IOT\\
+    \vspace{0.35cm}
     \fontsize{16}{20}\selectfont\bfseries
-    HỆ THỐNG GIÁM SÁT MÔI TRƯỜNG VÀ\\
-    ĐIỀU KHIỂN THIẾT BỊ QUA\\
-    GIAO THỨC MQTT\\
-    \vspace{0.5cm}
+    ĐỀ TÀI: XÂY DỰNG WEBSITE ĐO NHIỆT ĐỘ, ĐỘ ẨM\\
+    CỦA KHU VỰC VÀ ĐIỀU KHIỂN TẮT BẬT ĐÈN\\
+    \vspace{0.35cm}
     \fontsize{14}{18}\selectfont
     (ESP8266 + DHT11 + OLED SH1106 + Node-RED Dashboard)\\
 \end{center}
 
-\vspace{2.5cm}
+\vspace{1.1cm}
 
 \begin{center}
     \fontsize{13}{16}\selectfont
-    \begin{tabular}{ll}
-        \textbf{Môn học:} & Đồ án chuyên ngành \\
-        \textbf{GV hướng dẫn:} & \ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots \\
-        \textbf{Sinh viên thực hiện:} & \ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots \\
-        \textbf{MSSV:} & \ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots \\
-        \textbf{Lớp:} & \ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots \\
+    \begin{tabular}{@{}ll@{}}
+        \textbf{Giảng viên hướng dẫn:} & Lê Hữu Bình \\
+        \textbf{Nhóm học phần:} & Phát triển ứng dụng IoT - Nhóm 9 \\
+        \textbf{Mã lớp học phần:} & 2025-2026.2.TIN4024.009 \\
+        \textbf{Nhóm sinh viên thực hiện:} & Nhóm 6 \\[0.55em]
+        Phan Bá Đủ & --- 22T1020073 \\
+        Nguyễn Thị Huyền & --- 22T1020161 \\
+        Nguyễn Hữu Việt & --- 22T1020796 \\
     \end{tabular}
 \end{center}
 
-\vspace{3cm}
+\vspace{0.9cm}
 \begin{center}
     \fontsize{12}{14}\selectfont
-    TP. HỒ CHÍ MINH, 03/2026
+    Huế, Ngày 27 Tháng 03 Năm 2026
 \end{center}
 
 \newpage
@@ -232,13 +268,8 @@
 % =============================================================================
 \pagenumbering{roman}
 \thispagestyle{empty}
-\vspace*{2cm}
-\begin{center}
-    \fontsize{16}{20}\selectfont\bfseries MỤC LỤC
-\end{center}
-\vspace{1cm}
-{
-    \fontsize{12}{14}\selectfont
+\vspace*{0.35\baselineskip}
+{\setstretch{1}\normalsize
     \tableofcontents
 }
 \newpage
@@ -265,7 +296,6 @@ Internet of Things (IoT) là xu hướng kết nối các thiết bị vật lý
     \textbf{Lưu ý bảo mật:} Thông tin đăng nhập MQTT trong tài liệu này được thay bằng \code{****}. File \file{iot-nhom6.ino} chứa thông tin thật --- không đưa lên GitHub công khai sau khi nộp báo cáo.
 \end{mdframed}
 
-\newpage
 % =============================================================================
 % 2. NỘI DUNG THỰC HIỆN
 % =============================================================================
@@ -336,7 +366,6 @@ Màn hình \textbf{OLED SH1106 128x64 I2C} hiển thị thông tin cục bộ ng
     \label{tbl:oled}
     \begin{tabular}{|L{4cm}|C{5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Thông số} & \textbf{Giá trị} \\
         \hline
         Giao thức & I2C \\
@@ -360,7 +389,6 @@ Màn hình \textbf{OLED SH1106 128x64 I2C} hiển thị thông tin cục bộ ng
     \label{tbl:oledlayout}
     \begin{tabular}{|C{2cm}|C{5cm}|C{5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Dòng} & \textbf{Nội dung bình thường} & \textbf{Nội dung khi cảnh báo} \\
         \hline
         Dòng 1 & \code{T:28.0$^\circ$C 18-38$^\circ$C} & \code{T:28.0$^\circ$C Cao!} hoặc \code{T:28.0$^\circ$C Thap!} \\
@@ -385,7 +413,6 @@ OLED được cập nhật ngay lập tức mỗi khi có thao tác LED (MQTT ca
     \label{tbl:mqtt}
     \begin{tabularx}{\textwidth}{|L{4.8cm}|Y|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Thông số} & \textbf{Giá trị} \\
         \hline
         \textbf{Broker} & HiveMQ Cloud (hostname báo cáo: \code{****}) \\
@@ -422,41 +449,132 @@ Node-RED nhận message từ MQTT, parse JSON và phân luồng xử lý.
 
 \textbf{Cấu trúc flow chính:}
 
-\begin{lstlisting}[style=flowcode, caption={Luồng MQTT chính trong Node-RED}, label={lst:flow1}]
-[mqtt in: iot/env/data]
-        |
-        v
-[HandleData: function -- parse JSON + tach 4 nhanh]
-   |--[temperature]---> [temperature function]---> [ui_gauge] + [ui_chart]
-   |--[humidity]------> [humidity function]-----> [ui_gauge] + [ui_chart]
-   |--[alert]---------> [alert function]---------> [ui_toast]
-   +--[ledState]-----> [ledState function]-------> [ui_switch]
-\end{lstlisting}
+\begin{figure}[htbp]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        >=Latex,
+        mqttn/.style={draw=black!55, rounded corners=2pt, fill=green!14, inner sep=6pt, align=center, minimum width=2.9cm},
+        fn/.style={draw=black!55, rounded corners=2pt, fill=yellow!12, inner sep=5pt, align=center, text width=2.15cm},
+        uin/.style={draw=black!55, rounded corners=2pt, fill=blue!9, inner sep=5pt, align=center, text width=2.35cm},
+    ]
+        \node[mqttn] (m1) {\textbf{mqtt in}\\\texttt{iot/env/data}};
+        \node[fn, text width=8.5cm, minimum height=1.1cm] (hd) at (0,-2.1) {\textbf{HandleData} (function)\\[2pt]parse JSON, tách 4 nhánh song song};
+        \draw[->, thick] (m1) -- (hd);
+        \foreach \x/\lab in {-4.2/temperature, -1.4/humidity, 1.4/alert, 4.2/ledState}
+            \node[fn] (\lab) at (\x,-4.2) {\textbf{\lab}};
+        \coordinate (S) at (0,-2.95);
+        \draw[->, thick] (hd.south) -- (S);
+        \foreach \lab in {temperature, humidity, alert, ledState}
+            \draw[->, thick] (S) |- (\lab.north);
+        \node[fn] (tf) at (-4.2,-6.1) {temperature\\function};
+        \node[fn] (hf) at (-1.4,-6.1) {humidity\\function};
+        \node[fn] (af) at (1.4,-6.1) {alert\\function};
+        \node[fn] (lf) at (4.2,-6.1) {ledState\\function};
+        \foreach \a/\b in {temperature/tf, humidity/hf, alert/af, ledState/lf}
+            \draw[->, thick] (\a) -- (\b);
+        \node[uin] (u1) at (-4.2,-8.2) {\textbf{ui\_gauge}\\\textbf{ui\_chart}};
+        \node[uin] (u2) at (-1.4,-8.2) {\textbf{ui\_gauge}\\\textbf{ui\_chart}};
+        \node[uin] (u3) at (1.4,-8.2) {\textbf{ui\_toast}};
+        \node[uin] (u4) at (4.2,-8.2) {\textbf{ui\_switch}};
+        \draw[->, thick] (tf) -- (u1);
+        \draw[->, thick] (hf) -- (u2);
+        \draw[->, thick] (af) -- (u3);
+        \draw[->, thick] (lf) -- (u4);
+    \end{tikzpicture}%
+    }
+    \caption{Luồng MQTT chính trong Node-RED}
+    \label{fig:flow1}
+\end{figure}
 
-\begin{lstlisting}[style=flowcode, caption={Luồng đồng bộ LED status}, label={lst:flow2}]
-[mqtt in: iot/led/status]
-        |
-        v
-[Sync slider + switch tu LED status: function -- 2 output]
-   |--[brightness]---> [ui_slider]  (dong bo slider)
-   +--[ledState]-----> [ui_switch] (dong bo switch)
-\end{lstlisting}
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        >=Latex,
+        mqttn/.style={draw=black!55, rounded corners=2pt, fill=green!14, inner sep=6pt, align=center, minimum width=3cm},
+        fn/.style={draw=black!55, rounded corners=2pt, fill=yellow!12, inner sep=6pt, align=center},
+        uin/.style={draw=black!55, rounded corners=2pt, fill=blue!9, inner sep=6pt, align=center, text width=2.8cm},
+    ]
+        \node[mqttn] (m2) {\textbf{mqtt in}\\\texttt{iot/led/status}};
+        \node[fn, text width=5.35cm] (sync) at (0,-2.3) {\textbf{Sync slider + switch} (function)\\[2pt]đồng bộ từ trạng thái LED thật --- 2 output};
+        \draw[->, thick] (m2) -- (sync);
+        % Hai nhánh hẹp + lệch xa trục giữa (tránh chồng khối do text width lớn)
+        \node[fn, text width=2.05cm, minimum width=2.15cm] (br) at (-3.35,-4.6) {\textbf{brightness}};
+        \node[fn, text width=2.05cm, minimum width=2.15cm] (ls) at (3.35,-4.6) {\textbf{ledState}};
+        \coordinate (S2) at (0,-3.35);
+        \draw[->, thick] (sync.south) -- (S2);
+        \draw[->, thick] (S2) -| (br.north);
+        \draw[->, thick] (S2) -| (ls.north);
+        \node[uin] (sl) at (-3.35,-6.3) {\textbf{ui\_slider}\\\tiny đồng bộ slider};
+        \node[uin] (sw) at (3.35,-6.3) {\textbf{ui\_switch}\\\tiny đồng bộ switch};
+        \draw[->, thick] (br) -- (sl);
+        \draw[->, thick] (ls) -- (sw);
+    \end{tikzpicture}
+    \caption{Luồng đồng bộ LED status}
+    \label{fig:flow2}
+\end{figure}
 
-\begin{lstlisting}[style=flowcode, caption={Luồng điều khiển LED từ Dashboard}, label={lst:flow3}]
-[ui_slider: Dieu chinh do sang]
-        |
-        v
-[Set LED State Payload: function -- 2 output]
-   |--[brightness JSON]---> [slider2mqtt001]---> [mqtt out: iot/led/power/set]
-   +--[ledState bool]------> [ui_switch]        (dong bo switch)
-
-[ui_switch: Bat den / Tat den]
-        |
-        v
-[Format LED State: function -- 2 output]
-   |--[{ledState}]-------> [mqtt out: iot/led/power/set]
-   +--[0/100]------------> [ui_slider]             (dong bo slider)
-\end{lstlisting}
+\begin{figure}[htbp]
+    \centering
+    \footnotesize
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \textbf{(a) Nhánh từ Slider}\\[0.35em]
+        \begin{tikzpicture}[
+            font=\scriptsize,
+            >=Latex,
+            uin/.style={draw=black!55, rounded corners=2pt, fill=blue!6, inner sep=5pt, align=center, text width=2.5cm},
+            fn/.style={draw=black!55, rounded corners=2pt, fill=yellow!12, inner sep=5pt, align=center, text width=2.05cm},
+            mqttn/.style={draw=black!55, rounded corners=2pt, fill=green!14, inner sep=5pt, align=center, text width=2.5cm},
+        ]
+            \node[uin] (uis) at (0,0) {\textbf{ui\_slider}\\Điều chỉnh độ sáng};
+            \node[fn, text width=3.2cm] (setpl) at (0,-1.9) {\textbf{Set LED State Payload}\\2 output};
+            \draw[->, thick] (uis) -- (setpl);
+            \node[fn, minimum width=2.15cm] (bj) at (-2.35,-3.7) {\texttt{brightness} JSON};
+            \node[fn, minimum width=2.15cm] (lb) at (2.35,-3.7) {\texttt{ledState} bool};
+            \coordinate (S3) at (0,-2.75);
+            \draw[->, thick] (setpl.south) -- (S3);
+            \draw[->, thick] (S3) -| (bj.north);
+            \draw[->, thick] (S3) -| (lb.north);
+            \node[fn, minimum width=2.15cm] (s2m) at (-2.35,-5.3) {\textbf{slider2mqtt001}};
+            \node[uin] (usw1) at (2.35,-5.3) {\textbf{ui\_switch}\\\tiny đồng bộ};
+            \draw[->, thick] (bj) -- (s2m);
+            \draw[->, thick] (lb) -- (usw1);
+            \node[mqttn] (out1) at (0,-7) {\textbf{mqtt out}\\\texttt{iot/led/power/set}};
+            \draw[->, thick] (s2m.south) -- ++(0,-0.35) -| (out1.north);
+        \end{tikzpicture}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \textbf{(b) Nhánh từ Switch}\\[0.35em]
+        \begin{tikzpicture}[
+            font=\scriptsize,
+            >=Latex,
+            uin/.style={draw=black!55, rounded corners=2pt, fill=blue!6, inner sep=5pt, align=center, text width=2.5cm},
+            fn/.style={draw=black!55, rounded corners=2pt, fill=yellow!12, inner sep=5pt, align=center, text width=2.05cm},
+            mqttn/.style={draw=black!55, rounded corners=2pt, fill=green!14, inner sep=5pt, align=center, text width=2.5cm},
+        ]
+            \node[uin] (uisw) at (0,0) {\textbf{ui\_switch}\\Bật / tắt đèn};
+            \node[fn, text width=3.2cm] (fmt) at (0,-1.9) {\textbf{Format LED State}\\2 output};
+            \draw[->, thick] (uisw) -- (fmt);
+            \node[fn, minimum width=2.15cm] (lj) at (-2.35,-3.7) {\texttt{\{ledState\}}};
+            \node[fn, minimum width=2.15cm] (zv) at (2.35,-3.7) {\texttt{0} / \texttt{100}};
+            \coordinate (S4) at (0,-2.75);
+            \draw[->, thick] (fmt.south) -- (S4);
+            \draw[->, thick] (S4) -| (lj.north);
+            \draw[->, thick] (S4) -| (zv.north);
+            \node[mqttn] (out2) at (-2.35,-5.3) {\textbf{mqtt out}\\\texttt{iot/led/power/set}};
+            \node[uin] (usl2) at (2.35,-5.3) {\textbf{ui\_slider}\\\tiny đồng bộ};
+            \draw[->, thick] (lj) -- (out2);
+            \draw[->, thick] (zv) -- (usl2);
+        \end{tikzpicture}
+    \end{minipage}
+    \caption{Luồng điều khiển LED từ Dashboard}
+    \label{fig:flow3}
+\end{figure}
 
 \textbf{Chi tiết các node function:}
 
@@ -466,7 +584,6 @@ Node-RED nhận message từ MQTT, parse JSON và phân luồng xử lý.
     \label{tbl:nodes}
     \begin{tabular}{|L{4.5cm}|C{6cm}|C{3.5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Tên node} & \textbf{Mã xử lý (logic chính)} & \textbf{Đầu ra} \\
         \hline
         \code{HandleData} & \code{JSON.parse(msg.payload)} nếu là string; trả về 4 bản sao cho 4 nhánh & 4 output \\
@@ -503,7 +620,6 @@ Node-RED nhận message từ MQTT, parse JSON và phân luồng xử lý.
     \label{tbl:dashboard}
     \begin{tabular}{|L{4cm}|C{2.5cm}|C{6cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Thành phần} & \textbf{Loại} & \textbf{Mô tả} \\
         \hline
         Nhiệt độ hiện tại & \code{ui\_gauge} & Kim chỉ giá trị nhiệt độ ($^\circ$C), min=0, max=50 \\
@@ -544,7 +660,6 @@ Gauge nhiệt độ dùng ba vùng màu: xanh ($\le$vùng an toàn), vàng (trun
     \label{tbl:alerts}
     \begin{tabular}{|C{3.5cm}|C{3.5cm}|C{5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Cờ} & \textbf{Ngưỡng} & \textbf{Message} \\
         \hline
         \code{tempAlertHigh} & $> 38^\circ$C & "Nhiet do qua cao!" \\
@@ -592,7 +707,6 @@ Người dùng thao tác trên Dashboard (nhóm \textbf{Đèn}) để gửi lệ
     \label{tbl:callback}
     \begin{tabular}{|L{2.5cm}|C{4cm}|C{3.5cm}|C{3cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Nhánh} & \textbf{Điều kiện} & \textbf{Ví dụ payload} & \textbf{Hành động} \\
         \hline
         JSON (ưu tiên 1) & Có \code{brightness} & \code{\{"brightness":70\}} & PWM 0--255 \\
@@ -657,7 +771,6 @@ Người dùng thao tác trên Dashboard (nhóm \textbf{Đèn}) để gửi lệ
     \label{tbl:schedule}
     \begin{tabular}{|C{5cm}|C{7cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Thời gian} & \textbf{Hành động} \\
         \hline
         \textbf{18:00 -- 05:59} (18h tối -- 6h sáng) & Bật đèn (khôi phục \code{lastBrightness} hoặc 100\%) \\
@@ -680,7 +793,6 @@ Người dùng thao tác trên Dashboard (nhóm \textbf{Đèn}) để gửi lệ
 [SCHEDULE] Tu dong tat den (6h-18h)
 \end{lstlisting}
 
-\newpage
 % =============================================================================
 % 3. THIẾT KẾ MẠCH IoT
 % =============================================================================
@@ -701,7 +813,6 @@ Hệ thống được lắp mạch thật theo sơ đồ dưới đây. Không s
     \label{tbl:hardware}
     \begin{tabular}{|C{1cm}|L{4.5cm}|C{6.5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{STT} & \textbf{Thành phần} & \textbf{Mô tả} \\
         \hline
         1 & \textbf{ESP8266 (Wemos D1 Mini)} & Vi điều khiển chính --- Wi-Fi, GPIO, analogWrite PWM \\
@@ -726,7 +837,6 @@ Hệ thống được lắp mạch thật theo sơ đồ dưới đây. Không s
     \label{tbl:gpio}
     \begin{tabular}{|L{4.5cm}|C{5cm}|C{4cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Chân ESP8266 (GPIO)} & \textbf{Nối đến} & \textbf{Ghi chú} \\
         \hline
         \textbf{3.3V} & DHT11 VCC, OLED VCC & Nguồn cho cảm biến và OLED \\
@@ -777,7 +887,6 @@ Vi điều khiển single-core Tensilica LX106, tích hợp Wi-Fi 802.11 b/g/n. 
     \label{tbl:dht11}
     \begin{tabular}{|L{4cm}|C{5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Thông số} & \textbf{Giá trị} \\
         \hline
         Nguồn cấp & 3.3 V -- 5 V \\
@@ -805,7 +914,6 @@ Màn hình OLED đơn sắc giao tiếp qua I2C, không có chân reset (dùng \
 
 LED đỏ có điện áp hoạt động khoảng 1.8--2.2V và dòng tối đa 20mA. Điện trở 330$\Omega$ được chọn để giới hạn dòng qua LED. ESP8266 dùng \code{analogWrite()} trên GPIO 12 để điều khiển PWM 8-bit (0--255).
 
-\newpage
 % =============================================================================
 % 4. NGUYÊN LÝ HOẠT ĐỘNG
 % =============================================================================
@@ -818,67 +926,50 @@ LED đỏ có điện áp hoạt động khoảng 1.8--2.2V và dòng tối đa 
 \label{sec:sodoluong}
 \index{sodoluong}
 
-\begin{lstlisting}[style=flowcode, caption={Sơ đồ luồng hệ thống tổng quan}, label={lst:systemflow}]
-+------------+    GPIO0      +------------------------------------------------------+
-|   DHT11    +--------------|                        ESP8266                        |
-| (cam bien) |              |  - WiFi.begin()         - publishEnvData()             |
-+------------+              |  - WiFiClientSecure     - mqttCallback()                |
-        +-------------+   |  - PubSubClient         - analogWrite(PWM) -> GPIO12     |
-        | OLED SH1106 |   |  - U8G2                 - displayOLED()                   |
-        | (I2C 0x3C)  |   |         |                        |                         |
-        |             |   |         |                        |                         |
-        | GPIO4 SCL   |   |         |                        |                         |
-        | GPIO5 SDA   |   |         |                        |                         |
-        +-------------+   |         | publish("iot/env/data")|                         |
-                          |         | publish("iot/led/status")                        |
-        +-------------+   |         |<-----------------------+|                         |
-        | MQTT Broker |   |         | subscribe              |                         |
-        |  HiveMQ     |   |         | ("iot/led/power/set")  |                         |
-        |  :8883 TLS  |   |         |                        |                         |
-        +------+------+   +---------+------------------------+-------------------------+
-               |                     |                        |
-               |  iot/env/data      |   iot/led/power/set    |  iot/led/status
-               |  (JSON payload)   |   (JSON/so/chuoi)      |  (JSON payload)
-               |                    |                        |  (ESP->NR sync)
-               v                    |                        |
-+------------------------------+    |                        |
-|         Node-RED             |    |                        |
-|  +-------------------------+ |    |                        |
-|  | mqtt in: iot/env/data   | |    |                        |
-|  +-------------+-----------+ |    |                        |
-|                |               |    |                        |
-|  +-------------v-------------+ |    |                        |
-|  | HandleData (function)      | |    |                        |
-|  | parse JSON -> 4 nhanh      | |    |                        |
-|  +------+------+--+--+------+ | |    |                        |
-|         |      |  |  |       | |    |                        |
-|   +-----v--+ +v--v+ v--v+ +--v----v----+                |
-|   |temp/humi| |alert| |ledState|                          |
-|   +----+----+ +---+-++-----+                             |
-|        |        |      |                                    |
-|   +----v--------v------v----+                          |
-|   |    Dashboard (UI)         |                          |
-|   | Gauge|Chart|Toast|Switch|Slider                      |
-|   +-----------+--------------+                          |
-|               |                                           |
-|  +------------v---------------+                         |
-|  | mqtt in: iot/led/status  |                          |
-|  +-------------+-------------+                          |
-|                |                                         |
-|  +-------------v---------------------------+             |
-|  | Sync slider + switch (2 output)          |             |
-|  +-------------+-------------+-------------+             |
-|       |          |                                         |
-|   ui_slider  ui_switch                                  |
-+-----------------------------+---------------------------+
-              |                  |
-   +----------v----------+       |
-   | mqtt out            |       |
-   | iot/led/power/set   |<------+---- (toi ESP8266)
-   +---------+----------+----------------------------+
-              |
-              +--------------------> (lap lai luong)
-\end{lstlisting}
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        font=\footnotesize,
+        >={Latex[length=2.2mm]},
+        box/.style={draw=black!65, rounded corners=2.5pt, inner sep=7pt, align=center},
+        peripheral/.style={box, fill=blue!7, text width=0.19\textwidth},
+        core/.style={box, fill=blue!11, text width=0.52\textwidth, minimum height=2.8cm},
+        cloud/.style={box, fill=orange!14, text width=0.88\textwidth},
+        nodered/.style={box, fill=green!9, text width=0.88\textwidth},
+        arrlab/.style={font=\scriptsize, fill=white, inner sep=2pt, outer sep=1pt},
+    ]
+        % Tầng phần cứng + firmware (nhãn mũi tên đặt dưới đường nối để không đè chữ trong ô ESP)
+        \node[peripheral] (dht) {\textbf{DHT11}\\[3pt]\scriptsize Cảm biến nhiệt độ, độ ẩm\\[2pt]GPIO0 (D3)};
+        \node[core, right=5mm of dht] (esp) {\textbf{ESP8266 (Wemos D1 Mini)}\\[4pt]
+            \raggedright\scriptsize
+            Wi-Fi / TLS: \texttt{WiFi.begin},\ \texttt{WiFiClientSecure}\\[3pt]
+            MQTT / hiển thị: \texttt{PubSubClient},\ \texttt{U8g2}\\[3pt]
+            Luồng chính: \texttt{publishEnvData},\ \texttt{mqttCallback},\ \texttt{displayOLED}\\[3pt]
+            LED (PWM): \texttt{analogWrite} $\rightarrow$ GPIO12 (D6)};
+        \node[peripheral, right=5mm of esp] (oled) {\textbf{OLED SH1106}\\[3pt]\scriptsize Bus I$^2$C \texttt{0x3C}\\[2pt]SCL: GPIO4\\SDA: GPIO5};
+        \draw[->, thick] (dht.east) -- (esp.west)
+            node[midway, below=3.5mm, arrlab] {GPIO0};
+        \draw[->, thick] (oled.west) -- (esp.east)
+            node[midway, below=3.5mm, arrlab] {I$^2$C};
+        % Broker
+        \node[cloud, below=9mm of esp] (mq) {\textbf{MQTT Broker — HiveMQ Cloud}\quad (TLS, cổng 8883)\\[4pt]
+            \raggedright\scriptsize
+            \textbf{ESP $\rightarrow$ broker:}\ \texttt{iot/env/data} (JSON môi trường),\ \texttt{iot/led/status} (đồng bộ UI)\\[3pt]
+            \textbf{Broker $\rightarrow$ ESP:}\ \texttt{iot/led/power/set} (điều khiển LED)};
+        \draw[<->, thick] (esp.south) -- (mq.north)
+            node[midway, right=1mm, arrlab] {MQTT};
+        % Node-RED
+        \node[nodered, below=8mm of mq] (nr) {\textbf{Node-RED + Dashboard}\\[4pt]
+            \raggedright\scriptsize
+            \texttt{mqtt in} (\texttt{iot/env/data}) $\rightarrow$ \texttt{HandleData} (parse JSON)\\[2pt]
+            $\rightarrow$ nhánh nhiệt độ / độ ẩm / cảnh báo / trạng thái LED $\rightarrow$ Gauge, Chart, Toast, Switch, Slider\\[4pt]
+            \texttt{mqtt in} (\texttt{iot/led/status}) $\rightarrow$ đồng bộ Slider \& Switch\\[2pt]
+            $\rightarrow$ \texttt{mqtt out} (\texttt{iot/led/power/set}) $\rightarrow$ về ESP8266};
+        \draw[<->, thick] (mq.south) -- (nr.north);
+    \end{tikzpicture}
+    \caption{Sơ đồ luồng hệ thống tổng quan}
+    \label{fig:systemflow}
+\end{figure}
 
 % -----------------------------------------------------------------------------
 \subsection{Luồng giám sát: Cảm biến $\rightarrow$ Dashboard}
@@ -995,7 +1086,6 @@ if (WiFi.status() == WL_CONNECTED) {
 
 Timer \code{lastMQTT} tránh spam reconnect liên tục (thử lại mỗi 5 giây). \code{mqtt.loop()} luôn được gọi mỗi vòng loop để duy trì session MQTT và nhận callback kịp thời.
 
-\newpage
 % =============================================================================
 % 5. CÀI ĐẶT HỆ THỐNG
 % =============================================================================
@@ -1016,7 +1106,6 @@ Hướng dẫn từng bước để thiết lập môi trường phát triển, 
     \label{tbl:software}
     \begin{tabular}{|L{5cm}|C{3cm}|C{4.5cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Phần mềm / công cụ} & \textbf{Phiên bản} & \textbf{Ghi chú} \\
         \hline
         \textbf{Arduino IDE} & 1.8.x trở lên & Nạp firmware ESP8266 \\
@@ -1066,7 +1155,6 @@ Mở \textbf{Sketch $\rightarrow$ Include Library $\rightarrow$ Manage Libraries
     \label{tbl:libs}
     \begin{tabular}{|L{5cm}|C{4cm}|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Thư viện} & \textbf{Phiên bản} \\
         \hline
         \textbf{PubSubClient} & 2.8.x \\
@@ -1134,7 +1222,7 @@ Nhấn biểu tượng \textbf{Serial Monitor} hoặc \code{Ctrl+Shift+M}. Đặ
 
 \textbf{Kết quả mong đợi trên Serial Monitor:}
 
-\begin{lstlisting}[style=flowcode, caption={Serial Monitor output khi khởi động}, label={lst:serial}]
+\begin{lstlisting}[style=serialog, caption={Serial Monitor output khi khởi động}, label={lst:serial}]
 Dang ket noi WiFi.
 WiFi connected! IP: 192.168.x.x
 Dang lay gio tu NTP...
@@ -1232,14 +1320,13 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
     \label{tbl:broker}
     \begin{tabularx}{\textwidth}{|L{3.4cm}|Y|}
         \hline
-        \rowcolor{blue!20}
         \textbf{Trường} & \textbf{Giá trị} \\
         \hline
         \textbf{Server} & \codebreak{b1c8f2cc5cd4416fb74b671a407dc0ff.s1.eu.hivemq.cloud} \\
         \hline
         \textbf{Port} & \code{8883} \\
         \hline
-        \textbf{TLS} & Use TLS (bật trong giao diện Node-RED) \quad $\checkmark$ \\
+        \textbf{TLS} & Use TLS (bật trong giao diện Node-RED) \quad \ding{51} \\
         \hline
         \textbf{Username} & \code{****} (tài khoản HiveMQ thật) \\
         \hline
@@ -1281,7 +1368,6 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
     \item Quan sát \textbf{OLED SH1106} hiển thị thông tin cục bộ cùng lúc.
 \end{enumerate}
 
-\newpage
 % =============================================================================
 % 6. KẾT QUẢ THỰC HIỆN
 % =============================================================================
@@ -1354,7 +1440,6 @@ Phiên bản flow trong \file{node-red.json} tương thích với \textbf{node-r
     \item Serial: \code{[SCHEDULE] Tu dong bat den (18h-6h)}.
 \end{enumerate}
 
-\newpage
 % =============================================================================
 % 7. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
 % =============================================================================
@@ -1389,12 +1474,10 @@ Hệ thống IoT hoàn chỉnh gồm ba tầng đã được triển khai và ki
     \caption{Hạn chế và hướng phát triển tiếp theo}
     \label{tbl:limitations} \\
     \hline
-    \rowcolor{blue!20}
     \textbf{Hạn chế / Hướng phát triển} & \textbf{Mô tả} & \textbf{Ghi chú} \\
     \hline
     \endfirsthead
     \hline
-    \rowcolor{blue!20}
     \textbf{Hạn chế / Hướng phát triển} & \textbf{Mô tả} & \textbf{Ghi chú} \\
     \hline
     \endhead
@@ -1416,7 +1499,6 @@ Hệ thống IoT hoàn chỉnh gồm ba tầng đã được triển khai và ki
     \hline
 \end{longtable}
 
-\newpage
 % =============================================================================
 % PHỤ LỤC A — MÃ NGUỒN
 % =============================================================================
@@ -1467,7 +1549,6 @@ const char *mqtt_pass   = "****";
 % =============================================================================
 % TÀI LIỆU THAM KHẢO
 % =============================================================================
-\newpage
 \addcontentsline{toc}{section}{TÀI LIỆU THAM KHẢO}
 \begin{thebibliography}{99}
     \fontsize{12}{14}\selectfont
@@ -1479,25 +1560,6 @@ const char *mqtt_pass   = "****";
     \bibitem{pubsub}Nick O'Leary. \textit{PubSubClient for Arduino}. Truy cap: \url{https://github.com/knolleary/pubsubclient}.
     \bibitem{dashboard}Node-RED. \textit{node-red-dashboard}. Truy cap: \url{https://flows.nodered.org/node/node-red-dashboard}.
 \end{thebibliography}
-
-% =============================================================================
-% CAM ON
-% =============================================================================
-\newpage
-\thispagestyle{empty}
-\vspace*{3cm}
-\begin{center}
-    \fontsize{16}{20}\selectfont\bfseries
-    \ \\
-    \ \\
-    \ \\
-    CẢM ƠN THẦY/CÔ ĐÃ LẮNG NGHE!\\
-    \vspace{1cm}
-    \fontsize{13}{16}\selectfont
-    \ \\
-    \ \\
-    \ \\
-\end{center}
 
 % =============================================================================
 \end{document}
